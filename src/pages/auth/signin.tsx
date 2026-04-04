@@ -26,7 +26,13 @@ export default function SignIn() {
       if (result?.error) {
         setError('Invalid credentials')
       } else {
-        router.push('/')
+        // Get updated session to check role
+        const session = await getSession()
+        if (session?.user?.role === 'ADMIN') {
+          router.push('/admin')
+        } else {
+          router.push('/')
+        }
       }
     } catch {
       setError('Something went wrong')

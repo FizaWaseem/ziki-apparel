@@ -69,9 +69,9 @@ const heroSlides: HeroSlide[] = [
   // Video Slide 1
   {
     id: 1,
-     type: 'image',
-    src: '/images/hero-image.jpg',
-    title: 'Premium Denim Collection',
+    type: 'video',
+      src: '/videos/video0.mp4', 
+    title: 'Premium Trouser Collection',
     subtitle: 'Crafted for the modern lifestyle',
     ctaText: 'Shop Now',
     ctaLink: '/products'

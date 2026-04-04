@@ -27,67 +27,83 @@ interface Product {
 }
 
 interface HeroSlide {
-  id: number
+  id: string
   type: 'video' | 'image'
   src: string
-  poster?: string // Optional poster image for videos
+  poster?: string
   title: string
-  subtitle: string
+  subtitle?: string
   ctaText: string
   ctaLink: string
 }
 
+// Fallback hero slides (used if database is empty)
+const FALLBACK_HERO_SLIDES: HeroSlide[] = [
+  {
+    id: '1',
+    type: 'video',
+    src: '/videos/video0.mp4',
+    poster: '/images/hero-poster-1.jpg',
+    title: 'Premium Trouser Collection',
+    subtitle: 'Crafted for the modern lifestyle with uncompromising quality',
+    ctaText: 'Shop Now',
+    ctaLink: '/products'
+  },
+  {
+    id: '2',
+    type: 'video',
+    src: '/videos/hero-video-2.mp4',
+    poster: '/images/hero-poster-2.jpg',
+    title: 'Sustainable Fashion',
+    subtitle: 'Eco-friendly denim for a better tomorrow',
+    ctaText: 'Learn More',
+    ctaLink: '/products?sustainable=true'
+  },
+  {
+    id: '3',
+    type: 'image',
+    src: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=1200',
+    title: 'Raw Selvedge Denim',
+    subtitle: 'Authentic Japanese denim with timeless appeal',
+    ctaText: 'Explore Raw Denim',
+    ctaLink: '/products?category=raw-denim'
+  },
+  {
+    id: '4',
+    type: 'image',
+    src: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=1200',
+    title: 'Women\'s Skinny Fit',
+    subtitle: 'Perfect fit meets contemporary style',
+    ctaText: 'Shop Women\'s',
+    ctaLink: '/products?category=womens-jeans'
+  }
+]
+
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(FALLBACK_HERO_SLIDES)
   const [loading, setLoading] = useState(true)
   const [currentSlide, setCurrentSlide] = useState(0)
 
-  // Hero slides data
-  const heroSlides: HeroSlide[] = [
-    {
-      id: 1,
-       type: 'image',
-    src: '/images/hero-image.jpg', // Local video from public/videos folder
-      poster: '/images/hero-poster-1.jpg', // Optional poster image
-      title: 'Premium Denim Collection',
-      subtitle: 'Crafted for the modern lifestyle with uncompromising quality',
-      ctaText: 'Shop Now',
-      ctaLink: '/products'
-    },
-    {
-      id: 2,
-      type: 'video',
-      src: '/videos/hero-video-2.mp4', // Another local video
-      poster: '/images/hero-poster-2.jpg', // Optional poster image
-      title: 'Sustainable Fashion',
-      subtitle: 'Eco-friendly denim for a better tomorrow',
-      ctaText: 'Learn More',
-      ctaLink: '/products?sustainable=true'
-    },
-    {
-      id: 3,
-      type: 'image',
-      src: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=1200',
-      title: 'Raw Selvedge Denim',
-      subtitle: 'Authentic Japanese denim with timeless appeal',
-      ctaText: 'Explore Raw Denim',
-      ctaLink: '/products?category=raw-denim'
-    },
-    {
-      id: 4,
-      type: 'image',
-      src: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=1200',
-      title: 'Women\'s Skinny Fit',
-      subtitle: 'Perfect fit meets contemporary style',
-      ctaText: 'Shop Women\'s',
-      ctaLink: '/products?category=womens-jeans'
-    }
-    // You can add more slides here by copying the structure above
-  ]
-
   useEffect(() => {
+    fetchHeroSlides()
     fetchFeaturedProducts()
   }, [])
+
+  // Fetch hero slides from database
+  const fetchHeroSlides = async () => {
+    try {
+      const response = await fetch('/api/hero')
+      const data = await response.json()
+      // Use fetched slides if available, otherwise use fallback
+      if (data.length > 0) {
+        setHeroSlides(data)
+      }
+    } catch (error) {
+      console.error('Error fetching hero slides:', error)
+      // Keep using fallback slides on error
+    }
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -149,7 +165,6 @@ export default function Home() {
                   playsInline
                   poster={slide.poster} // Add poster image
                   className="w-full h-full object-cover"
-                  onLoadStart={() => console.log(`Loading video: ${slide.src}`)}
                   onError={(e) => console.error(`Video error: ${slide.src}`, e)}
                 >
                   <source src={slide.src} type="video/mp4" />
@@ -353,6 +368,90 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Products */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Popular This Week
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Discover what&apos;s trending with our most loved products
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredProducts.slice(0, 3).map((product) => (
+              <div key={`popular-${product.id}`} className="bg-white rounded-lg shadow-sm overflow-hidden group hover:shadow-md transition-shadow">
+                <div className="relative h-64 overflow-hidden">
+                  <Link href={`/products/${product.slug}`}>
+                    <Image
+                      src={product.images[0]?.url || '/placeholder-product.jpg'}
+                      alt={product.images[0]?.alt || product.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                  </Link>
+                  
+                  {/* Popular Badge */}
+                  <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-1 rounded">
+                    🔥 Popular
+                  </div>
+                  
+                  {product.comparePrice && product.comparePrice > product.price && (
+                    <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                      {Math.round((1 - product.price / product.comparePrice) * 100)}% OFF
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6">
+                  <div className="mb-3">
+                    {product.category && (
+                      <p className="text-sm text-gray-500 mb-1">{product.category.name}</p>
+                    )}
+                    <Link 
+                      href={`/products/${product.slug}`}
+                      className="text-xl font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                    >
+                      {product.name}
+                    </Link>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-2xl font-bold text-gray-900">
+                        {formatPrice(product.price)}
+                      </span>
+                      {product.comparePrice && (
+                        <span className="text-lg text-gray-500 line-through ml-2">
+                          {formatPrice(product.comparePrice)}
+                        </span>
+                      )}
+                    </div>
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="bg-gray-900 text-white px-4 py-3 rounded-full font-semibold hover:bg-black transition-colors"
+                    >
+                      View Details
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link
+              href="/products"
+              className="bg-gray-200 text-gray-800 px-8 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+            >
+              View All Products
             </Link>
           </div>
         </div>

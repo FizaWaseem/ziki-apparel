@@ -3,7 +3,20 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { sendOrderConfirmationEmail } from '../../../lib/emailService'
+import { sendOrderConfirmationEmail, sendAdminNewOrderNotification } from '../../../lib/emailService'
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit'
+// Define ShippingAddress type to match the schema
+type ShippingAddress = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+};
 
 const createOrderSchema = z.object({
   shippingAddress: z.object({
@@ -18,11 +31,12 @@ const createOrderSchema = z.object({
     country: z.string().min(1),
   }),
   paymentMethod: z.object({
-    type: z.enum(['card', 'cod']),
-    cardNumber: z.string().optional(),
-    expiryDate: z.string().optional(),
-    cvv: z.string().optional(),
-    cardholderName: z.string().optional(),
+    type: z.enum(['cod', 'jazzcash', 'bank']),
+    jazzCashTransactionId: z.string().optional(),
+    jazzCashScreenshotPath: z.string().optional(),
+    bankName: z.string().optional(),
+    bankAccountNumber: z.string().optional(),
+    bankAccountName: z.string().optional(),
   }),
   items: z.array(z.object({
     productId: z.string(),
@@ -40,6 +54,10 @@ const createOrderSchema = z.object({
 })
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Rate limiting for order operations
+  if (!rateLimitMiddleware(req, res, RATE_LIMITS.DEFAULT)) {
+    return
+  }
   const session = await getServerSession(req, res, authOptions)
 
   if (!session?.user?.id) {
@@ -51,9 +69,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     try {
       const { all } = req.query;
-      
+
       // If 'all' parameter is present and user is admin, fetch all orders
-      if (all === 'true' && session.user.role === 'admin') {
+      if (all === 'true' && session.user.role === 'ADMIN') {
         const orders = await prisma.order.findMany({
           include: {
             items: {
@@ -79,10 +97,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           orderBy: { createdAt: 'desc' },
         });
-        
+
         return res.status(200).json(orders);
       }
-      
+
       // Otherwise, fetch only user's orders
       const orders = await prisma.order.findMany({
         where: { userId },
@@ -114,11 +132,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     try {
       const validation = createOrderSchema.safeParse(req.body)
-      
+
       if (!validation.success) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Invalid order data',
-          errors: validation.error.issues 
+          errors: validation.error.issues
         })
       }
 
@@ -136,8 +154,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })
 
         if (!product) {
-          return res.status(400).json({ 
-            message: `Product not found: ${item.productId}` 
+          return res.status(400).json({
+            message: `Product not found: ${item.productId}`
           })
         }
 
@@ -147,14 +165,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           })
 
           if (!variant) {
-            return res.status(400).json({ 
-              message: `Product variant not found: ${item.variantId}` 
+            return res.status(400).json({
+              message: `Product variant not found: ${item.variantId}`
             })
           }
 
           if (variant.stock < item.quantity) {
-            return res.status(400).json({ 
-              message: `Insufficient stock for ${product.name} (${variant.size})` 
+            return res.status(400).json({
+              message: `Insufficient stock for ${product.name} (${variant.size})`
             })
           }
         }
@@ -163,6 +181,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Create the order
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const order = await prisma.$transaction(async (tx: any) => {
+        // Determine payment status based on payment method
+        let paymentStatus = 'PENDING'
+        if (paymentMethod.type === 'jazzcash' || paymentMethod.type === 'bank') {
+          paymentStatus = 'PROCESSING'
+        }
+
         // Create order
         const newOrder = await tx.order.create({
           data: {
@@ -184,7 +208,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               country: shippingAddress.country,
             },
             paymentMethod: paymentMethod.type,
-            paymentStatus: paymentMethod.type === 'cod' ? 'PENDING' : 'PROCESSING',
+            paymentStatus: paymentStatus,
           },
         })
 
@@ -245,14 +269,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         if (completeOrder) {
           // Transform the order data for email service
+          const shipping: ShippingAddress = completeOrder.shippingAddress as ShippingAddress;
           const emailOrderData = {
             id: completeOrder.id,
             total: completeOrder.total,
             status: completeOrder.status,
-            paymentMethod: completeOrder.paymentMethod,
-            shippingAddress: completeOrder.shippingAddress,
+            paymentMethod: completeOrder.paymentMethod ?? '',
+            shippingAddress: {
+              firstName: shipping.firstName,
+              lastName: shipping.lastName,
+              email: shipping.email,
+              phone: shipping.phone,
+              addressLine1: (shipping as unknown as { addressLine1?: string }).addressLine1 ?? shipping.address ?? '',
+              addressLine2: (shipping as unknown as { addressLine2?: string }).addressLine2 ?? '',
+              city: shipping.city,
+              state: shipping.state,
+              zipCode: shipping.zipCode,
+              country: shipping.country,
+            },
             createdAt: completeOrder.createdAt,
-            items: completeOrder.items.map((item: any) => ({
+            items: completeOrder.items.map((item: {
+              id: string;
+              quantity: number;
+              price: number;
+              variant?: { size?: string | null } | null;
+              product: { id: string; name: string; price: number };
+            }) => ({
               id: item.id,
               quantity: item.quantity,
               price: item.price,
@@ -270,6 +312,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch (emailError) {
         console.error('Error sending order confirmation email:', emailError);
         // Don't fail the order creation if email fails
+      }
+
+      // Send admin notification
+      try {
+        if (completeOrder) {
+          const paymentDetails = {
+            type: paymentMethod.type,
+            ...(paymentMethod.type === 'jazzcash' && {
+              transactionId: paymentMethod.jazzCashTransactionId,
+            }),
+            ...(paymentMethod.type === 'bank' && {
+              bankName: paymentMethod.bankName,
+              bankAccountNumber: paymentMethod.bankAccountNumber,
+            }),
+          };
+
+          // Create properly typed admin order data
+          const shipping = completeOrder.shippingAddress as unknown as ShippingAddress;
+          const adminOrderData = {
+            id: completeOrder.id,
+            total: completeOrder.total,
+            status: completeOrder.status,
+            paymentMethod: completeOrder.paymentMethod ?? '',
+            shippingAddress: {
+              firstName: shipping.firstName,
+              lastName: shipping.lastName,
+              email: shipping.email,
+              phone: shipping.phone,
+              addressLine1: shipping.address ?? '',
+              addressLine2: '',
+              city: shipping.city,
+              state: shipping.state,
+              zipCode: shipping.zipCode,
+              country: shipping.country,
+            },
+            createdAt: completeOrder.createdAt,
+            items: (completeOrder.items ?? []).map(item => ({
+              id: item.id,
+              quantity: item.quantity,
+              price: item.price,
+              size: item.variant?.size || 'Standard',
+              product: {
+                id: item.product.id,
+                name: item.product.name,
+                price: item.product.price,
+              },
+            })),
+          };
+
+          interface PaymentDetails {
+            type: string;
+            transactionId?: string;
+            bankName?: string;
+            bankAccountNumber?: string;
+          }
+
+          const typedPaymentDetails: PaymentDetails = paymentDetails;
+
+          await sendAdminNewOrderNotification(adminOrderData, typedPaymentDetails);
+        }
+      } catch (adminEmailError) {
+        console.error('Error sending admin notification:', adminEmailError);
+        // Don't fail the order creation if admin email fails
       }
 
       return res.status(201).json(completeOrder)

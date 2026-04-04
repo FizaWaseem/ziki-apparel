@@ -36,6 +36,7 @@ interface CartItem {
   quantity: number
   productId: string
   variantId?: string | null
+  price: number
   product: Product
   variant: ProductVariant | null
 }

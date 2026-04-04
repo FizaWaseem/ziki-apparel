@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import Image from 'next/image'
@@ -18,18 +18,22 @@ interface ShippingAddress {
 }
 
 interface PaymentMethod {
-  type: 'card' | 'cod'
-  cardNumber?: string
-  expiryDate?: string
-  cvv?: string
-  cardholderName?: string
+  type: 'cod' | 'jazzcash' | 'bank'
+  // Jazz Cash fields
+  jazzCashTransactionId?: string
+  jazzCashScreenshot?: File | null
+  // Bank Account fields
+  bankAccountNumber?: string
+  bankAccountName?: string
+  bankName?: string
 }
 
 export default function CheckoutPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const { items, summary, loading } = useCart()
-  
+  const formContainerRef = useRef<HTMLDivElement>(null)
+
   const [step, setStep] = useState(1) // 1: Shipping, 2: Payment, 3: Review
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: '',
@@ -42,13 +46,13 @@ export default function CheckoutPage() {
     zipCode: '',
     country: 'Pakistan'
   })
-  
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>({
     type: 'cod'
   })
-  
+
   const [processing, setProcessing] = useState(false)
-  const [errors, setErrors] = useState<{[key: string]: string}>({})
+  const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   useEffect(() => {
     if (session === null) {
@@ -62,6 +66,13 @@ export default function CheckoutPage() {
     }
   }, [items, loading, router])
 
+  // Scroll to form when step changes
+  useEffect(() => {
+    if (formContainerRef.current) {
+      formContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [step])
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -70,8 +81,8 @@ export default function CheckoutPage() {
   }
 
   const validateShippingForm = () => {
-    const newErrors: {[key: string]: string} = {}
-    
+    const newErrors: { [key: string]: string } = {}
+
     if (!shippingAddress.firstName.trim()) newErrors.firstName = 'First name is required'
     if (!shippingAddress.lastName.trim()) newErrors.lastName = 'Last name is required'
     if (!shippingAddress.email.trim()) newErrors.email = 'Email is required'
@@ -80,13 +91,13 @@ export default function CheckoutPage() {
     if (!shippingAddress.city.trim()) newErrors.city = 'City is required'
     if (!shippingAddress.state.trim()) newErrors.state = 'State is required'
     if (!shippingAddress.zipCode.trim()) newErrors.zipCode = 'ZIP code is required'
-    
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (shippingAddress.email && !emailRegex.test(shippingAddress.email)) {
       newErrors.email = 'Please enter a valid email address'
     }
-    
+
     // Phone validation
     const phoneRegex = /^[\+]?[\d\s\-\(\)]{10,}$/
     if (shippingAddress.phone && !phoneRegex.test(shippingAddress.phone)) {
@@ -99,16 +110,35 @@ export default function CheckoutPage() {
 
   const validatePaymentForm = () => {
     if (paymentMethod.type === 'cod') return true
-    
-    const newErrors: {[key: string]: string} = {}
-    
-    if (!paymentMethod.cardNumber?.trim()) newErrors.cardNumber = 'Card number is required'
-    if (!paymentMethod.expiryDate?.trim()) newErrors.expiryDate = 'Expiry date is required'
-    if (!paymentMethod.cvv?.trim()) newErrors.cvv = 'CVV is required'
-    if (!paymentMethod.cardholderName?.trim()) newErrors.cardholderName = 'Cardholder name is required'
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+
+    if (paymentMethod.type === 'jazzcash') {
+      const hasTransactionId = paymentMethod.jazzCashTransactionId?.trim()
+      const hasScreenshot = paymentMethod.jazzCashScreenshot
+
+      if (!hasTransactionId && !hasScreenshot) {
+        alert('Please provide either a Transaction ID or a screenshot of the transaction')
+        return false
+      }
+      return true
+    }
+
+    if (paymentMethod.type === 'bank') {
+      if (!paymentMethod.bankName?.trim()) {
+        alert('Please enter your bank name')
+        return false
+      }
+      if (!paymentMethod.bankAccountNumber?.trim()) {
+        alert('Please enter your account number')
+        return false
+      }
+      if (!paymentMethod.bankAccountName?.trim()) {
+        alert('Please enter the account holder name')
+        return false
+      }
+      return true
+    }
+
+    return false
   }
 
   const handleNextStep = () => {
@@ -121,11 +151,36 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     setProcessing(true)
-    
+
     try {
+      // Handle file conversion for Jazz Cash screenshot
+      let screenshotPath: string | undefined
+      if (paymentMethod.type === 'jazzcash' && paymentMethod.jazzCashScreenshot) {
+        const file = paymentMethod.jazzCashScreenshot
+        const reader = new FileReader()
+
+        screenshotPath = await new Promise((resolve) => {
+          reader.onload = () => {
+            resolve(reader.result as string)
+          }
+          reader.readAsDataURL(file)
+        })
+      }
+
       const orderData = {
         shippingAddress,
-        paymentMethod,
+        paymentMethod: {
+          type: paymentMethod.type,
+          ...(paymentMethod.type === 'jazzcash' && {
+            jazzCashTransactionId: paymentMethod.jazzCashTransactionId,
+            jazzCashScreenshotPath: screenshotPath,
+          }),
+          ...(paymentMethod.type === 'bank' && {
+            bankName: paymentMethod.bankName,
+            bankAccountNumber: paymentMethod.bankAccountNumber,
+            bankAccountName: paymentMethod.bankAccountName,
+          }),
+        },
         items: items.map(item => ({
           productId: item.productId,
           variantId: item.variantId,
@@ -181,22 +236,19 @@ export default function CheckoutPage() {
               <div className="flex items-center justify-center space-x-4">
                 {[1, 2, 3].map((stepNumber) => (
                   <div key={stepNumber} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      step >= stepNumber 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-300 text-gray-600'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-300 text-gray-600'
+                      }`}>
                       {stepNumber}
                     </div>
-                    <span className={`ml-2 text-sm ${
-                      step >= stepNumber ? 'text-blue-600' : 'text-gray-600'
-                    }`}>
+                    <span className={`ml-2 text-sm ${step >= stepNumber ? 'text-blue-600' : 'text-gray-600'
+                      }`}>
                       {stepNumber === 1 ? 'Shipping' : stepNumber === 2 ? 'Payment' : 'Review'}
                     </span>
                     {stepNumber < 3 && (
-                      <div className={`w-12 h-px mx-4 ${
-                        step > stepNumber ? 'bg-blue-600' : 'bg-gray-300'
-                      }`} />
+                      <div className={`w-12 h-px mx-4 ${step > stepNumber ? 'bg-gray-900' : 'bg-gray-300'
+                        }`} />
                     )}
                   </div>
                 ))}
@@ -206,7 +258,7 @@ export default function CheckoutPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Main Content */}
               <div className="lg:col-span-2">
-                <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="bg-white rounded-lg shadow-sm p-6" ref={formContainerRef}>
                   {/* Step 1: Shipping Information */}
                   {step === 1 && (
                     <div>
@@ -220,15 +272,14 @@ export default function CheckoutPage() {
                             <input
                               type="text"
                               value={shippingAddress.firstName}
-                              onChange={(e) => setShippingAddress({...shippingAddress, firstName: e.target.value})}
-                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.firstName ? 'border-red-500' : 'border-gray-300'
-                              }`}
+                              onChange={(e) => setShippingAddress({ ...shippingAddress, firstName: e.target.value })}
+                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.firstName ? 'border-red-500' : 'border-gray-300'
+                                }`}
                               placeholder="Enter your first name"
                             />
                             {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Last Name *
@@ -236,10 +287,9 @@ export default function CheckoutPage() {
                             <input
                               type="text"
                               value={shippingAddress.lastName}
-                              onChange={(e) => setShippingAddress({...shippingAddress, lastName: e.target.value})}
-                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.lastName ? 'border-red-500' : 'border-gray-300'
-                              }`}
+                              onChange={(e) => setShippingAddress({ ...shippingAddress, lastName: e.target.value })}
+                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.lastName ? 'border-red-500' : 'border-gray-300'
+                                }`}
                               placeholder="Enter your last name"
                             />
                             {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
@@ -254,15 +304,14 @@ export default function CheckoutPage() {
                             <input
                               type="email"
                               value={shippingAddress.email}
-                              onChange={(e) => setShippingAddress({...shippingAddress, email: e.target.value})}
-                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.email ? 'border-red-500' : 'border-gray-300'
-                              }`}
+                              onChange={(e) => setShippingAddress({ ...shippingAddress, email: e.target.value })}
+                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                                }`}
                               placeholder="Enter your email"
                             />
                             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Phone Number *
@@ -270,10 +319,9 @@ export default function CheckoutPage() {
                             <input
                               type="tel"
                               value={shippingAddress.phone}
-                              onChange={(e) => setShippingAddress({...shippingAddress, phone: e.target.value})}
-                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.phone ? 'border-red-500' : 'border-gray-300'
-                              }`}
+                              onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
+                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.phone ? 'border-red-500' : 'border-gray-300'
+                                }`}
                               placeholder="Enter your phone number"
                             />
                             {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
@@ -287,10 +335,9 @@ export default function CheckoutPage() {
                           <input
                             type="text"
                             value={shippingAddress.address}
-                            onChange={(e) => setShippingAddress({...shippingAddress, address: e.target.value})}
-                            className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                              errors.address ? 'border-red-500' : 'border-gray-300'
-                            }`}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, address: e.target.value })}
+                            className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.address ? 'border-red-500' : 'border-gray-300'
+                              }`}
                             placeholder="Enter your full address"
                           />
                           {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
@@ -304,31 +351,33 @@ export default function CheckoutPage() {
                             <input
                               type="text"
                               value={shippingAddress.city}
-                              onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
-                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.city ? 'border-red-500' : 'border-gray-300'
-                              }`}
+                              onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
+                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.city ? 'border-red-500' : 'border-gray-300'
+                                }`}
                               placeholder="City"
                             />
                             {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               State/Province *
                             </label>
-                            <input
-                              type="text"
+                            <select
                               value={shippingAddress.state}
-                              onChange={(e) => setShippingAddress({...shippingAddress, state: e.target.value})}
-                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.state ? 'border-red-500' : 'border-gray-300'
-                              }`}
-                              placeholder="State/Province"
-                            />
+                              onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
+                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.state ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                            >
+                              <option value="">-- Select Province --</option>
+                              <option value="Punjab">Punjab</option>
+                              <option value="Sindh">Sindh</option>
+                              <option value="KPK">KPK</option>
+                              <option value="Balochistan">Balochistan</option>
+                            </select>
                             {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               ZIP/Postal Code *
@@ -336,10 +385,9 @@ export default function CheckoutPage() {
                             <input
                               type="text"
                               value={shippingAddress.zipCode}
-                              onChange={(e) => setShippingAddress({...shippingAddress, zipCode: e.target.value})}
-                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.zipCode ? 'border-red-500' : 'border-gray-300'
-                              }`}
+                              onChange={(e) => setShippingAddress({ ...shippingAddress, zipCode: e.target.value })}
+                              className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.zipCode ? 'border-red-500' : 'border-gray-300'
+                                }`}
                               placeholder="ZIP Code"
                             />
                             {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
@@ -352,7 +400,7 @@ export default function CheckoutPage() {
                           </label>
                           <select
                             value={shippingAddress.country}
-                            onChange={(e) => setShippingAddress({...shippingAddress, country: e.target.value})}
+                            onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
                             className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           >
                             <option value="Pakistan">Pakistan</option>
@@ -368,115 +416,164 @@ export default function CheckoutPage() {
                   {/* Step 2: Payment Method */}
                   {step === 2 && (
                     <div>
-                      <h2 className="text-2xl font-bold mb-6">Payment Method</h2>
-                      
+                      <h2 className="text-2xl font-bold mb-6">Payment Method & Delivery</h2>
+
                       <div className="space-y-4">
                         {/* Cash on Delivery */}
-                        <div className="border rounded-lg p-4">
+                        <div className="border rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors"
+                          onClick={() => setPaymentMethod({ type: 'cod' })}>
                           <label className="flex items-center cursor-pointer">
                             <input
                               type="radio"
                               name="paymentMethod"
                               value="cod"
                               checked={paymentMethod.type === 'cod'}
-                              onChange={() => setPaymentMethod({type: 'cod'})}
+                              onChange={() => setPaymentMethod({ type: 'cod' })}
                               className="mr-3"
                             />
                             <div className="flex-1">
-                              <h3 className="font-semibold">Cash on Delivery</h3>
-                              <p className="text-gray-600 text-sm">Pay when your order is delivered</p>
+                              <h3 className="font-semibold">Cash on Delivery (Default)</h3>
+                              <p className="text-gray-600 text-sm">Pay when your order is delivered to your address</p>
                             </div>
-                            <div className="text-2xl">📦</div>
+                            <div className="text-2xl">🚚</div>
                           </label>
                         </div>
 
-                        {/* Credit Card */}
-                        <div className="border rounded-lg p-4">
+                        {/* Jazz Cash */}
+                        <div className="border rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors"
+                          onClick={() => setPaymentMethod({ ...paymentMethod, type: 'jazzcash' })}>
                           <label className="flex items-center cursor-pointer">
                             <input
                               type="radio"
                               name="paymentMethod"
-                              value="card"
-                              checked={paymentMethod.type === 'card'}
-                              onChange={() => setPaymentMethod({type: 'card', cardNumber: '', expiryDate: '', cvv: '', cardholderName: ''})}
+                              value="jazzcash"
+                              checked={paymentMethod.type === 'jazzcash'}
+                              onChange={() => setPaymentMethod({ ...paymentMethod, type: 'jazzcash' })}
                               className="mr-3"
                             />
                             <div className="flex-1">
-                              <h3 className="font-semibold">Credit/Debit Card</h3>
-                              <p className="text-gray-600 text-sm">Pay securely with your card</p>
+                              <h3 className="font-semibold">Jazz Cash</h3>
+                              <p className="text-gray-600 text-sm">Pay using your Jazz Cash account</p>
                             </div>
-                            <div className="text-2xl">💳</div>
+                            <div className="text-2xl">📱</div>
                           </label>
                         </div>
 
-                        {/* Card Details */}
-                        {paymentMethod.type === 'card' && (
-                          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                        {/* Jazz Cash Details */}
+                        {paymentMethod.type === 'jazzcash' && (
+                          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
+                            {/* Account Information */}
+                            <div className="bg-white p-3 rounded border border-blue-300">
+                              <p className="text-sm text-gray-600 mb-2">Send payment to:</p>
+                              <div className="space-y-1">
+                                <p className="font-semibold text-lg text-gray-800">03225653586</p>
+                                <p className="text-sm text-gray-700">Account Name: <span className="font-medium">Zohaib zahid</span></p>
+                              </div>
+                            </div>
+
+                            {/* Instructions */}
+                            <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                              <p className="text-sm text-yellow-800">
+                                <span className="font-medium">📝 Instructions:</span> Send the amount to the Jazz Cash number above, then provide either the Transaction ID or a screenshot of the transaction below.
+                              </p>
+                            </div>
+
+                            {/* Transaction ID */}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Cardholder Name *
+                                Transaction ID (Optional)
                               </label>
                               <input
                                 type="text"
-                                value={paymentMethod.cardholderName || ''}
-                                onChange={(e) => setPaymentMethod({...paymentMethod, cardholderName: e.target.value})}
-                                className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                  errors.cardholderName ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                                placeholder="Name on card"
+                                value={paymentMethod.jazzCashTransactionId || ''}
+                                onChange={(e) => setPaymentMethod({ ...paymentMethod, jazzCashTransactionId: e.target.value })}
+                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="e.g., TXN123456789"
                               />
-                              {errors.cardholderName && <p className="text-red-500 text-sm mt-1">{errors.cardholderName}</p>}
+                              <p className="text-xs text-gray-500 mt-1">The transaction ID from your Jazz Cash receipt</p>
                             </div>
 
+                            {/* Screenshot Upload */}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Card Number *
+                                Transaction Screenshot (Optional)
+                              </label>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setPaymentMethod({ ...paymentMethod, jazzCashScreenshot: e.target.files?.[0] || null })}
+                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">Upload a screenshot of your transaction confirmation</p>
+                              {paymentMethod.jazzCashScreenshot && (
+                                <p className="text-xs text-green-600 mt-1">✓ File selected: {paymentMethod.jazzCashScreenshot.name}</p>
+                              )}
+                            </div>
+
+                            <p className="text-xs text-blue-700">ℹ️ At least one of Transaction ID or Screenshot is required</p>
+                          </div>
+                        )}
+
+                        {/* Bank Account */}
+                        <div className="border rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors"
+                          onClick={() => setPaymentMethod({ ...paymentMethod, type: 'bank' })}>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="paymentMethod"
+                              value="bank"
+                              checked={paymentMethod.type === 'bank'}
+                              onChange={() => setPaymentMethod({ ...paymentMethod, type: 'bank' })}
+                              className="mr-3"
+                            />
+                            <div className="flex-1">
+                              <h3 className="font-semibold">Bank Transfer</h3>
+                              <p className="text-gray-600 text-sm">Pay directly from your bank account</p>
+                            </div>
+                            <div className="text-2xl">🏦</div>
+                          </label>
+                        </div>
+
+                        {/* Bank Account Details */}
+                        {paymentMethod.type === 'bank' && (
+                          <div className="bg-green-50 p-4 rounded-lg border border-green-200 space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Bank Name *
                               </label>
                               <input
                                 type="text"
-                                value={paymentMethod.cardNumber || ''}
-                                onChange={(e) => setPaymentMethod({...paymentMethod, cardNumber: e.target.value})}
-                                className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                  errors.cardNumber ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                                placeholder="1234 5678 9012 3456"
+                                value={paymentMethod.bankName || ''}
+                                onChange={(e) => setPaymentMethod({ ...paymentMethod, bankName: e.target.value })}
+                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="e.g., HBL, UBL, Habib Bank"
                               />
-                              {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>}
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Expiry Date *
-                                </label>
-                                <input
-                                  type="text"
-                                  value={paymentMethod.expiryDate || ''}
-                                  onChange={(e) => setPaymentMethod({...paymentMethod, expiryDate: e.target.value})}
-                                  className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    errors.expiryDate ? 'border-red-500' : 'border-gray-300'
-                                  }`}
-                                  placeholder="MM/YY"
-                                />
-                                {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  CVV *
-                                </label>
-                                <input
-                                  type="text"
-                                  value={paymentMethod.cvv || ''}
-                                  onChange={(e) => setPaymentMethod({...paymentMethod, cvv: e.target.value})}
-                                  className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    errors.cvv ? 'border-red-500' : 'border-gray-300'
-                                  }`}
-                                  placeholder="123"
-                                />
-                                {errors.cvv && <p className="text-red-500 text-sm mt-1">{errors.cvv}</p>}
-                              </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Account Number *
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentMethod.bankAccountNumber || ''}
+                                onChange={(e) => setPaymentMethod({ ...paymentMethod, bankAccountNumber: e.target.value })}
+                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter your account number"
+                              />
                             </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Account Holder Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentMethod.bankAccountName || ''}
+                                onChange={(e) => setPaymentMethod({ ...paymentMethod, bankAccountName: e.target.value })}
+                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter the account holder name"
+                              />
+                            </div>
+                            <p className="text-sm text-green-700 font-medium">⚠️ Your account information will be securely stored</p>
                           </div>
                         )}
                       </div>
@@ -487,7 +584,7 @@ export default function CheckoutPage() {
                   {step === 3 && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">Review Your Order</h2>
-                      
+
                       {/* Shipping Details */}
                       <div className="border rounded-lg p-4 mb-6">
                         <h3 className="font-semibold mb-3">Shipping Address</h3>
@@ -511,11 +608,28 @@ export default function CheckoutPage() {
                       <div className="border rounded-lg p-4 mb-6">
                         <h3 className="font-semibold mb-3">Payment Method</h3>
                         <div className="text-gray-600">
-                          {paymentMethod.type === 'cod' ? (
-                            <p>Cash on Delivery</p>
-                          ) : (
-                            <p>Credit/Debit Card ending in {paymentMethod.cardNumber?.slice(-4)}</p>
+                          {paymentMethod.type === 'cod' && (
+                            <p className="font-medium">💚 Cash on Delivery</p>
                           )}
+                          {paymentMethod.type === 'jazzcash' && (
+                            <div>
+                              <p className="font-medium">📱 Jazz Cash</p>
+                              {paymentMethod.jazzCashTransactionId && (
+                                <p className="text-sm">Transaction ID: {paymentMethod.jazzCashTransactionId}</p>
+                              )}
+                              {paymentMethod.jazzCashScreenshot && (
+                                <p className="text-sm">Screenshot: {paymentMethod.jazzCashScreenshot.name}</p>
+                              )}
+                            </div>
+                          )}
+                          {paymentMethod.type === 'bank' && (
+                            <div>
+                              <p className="font-medium">🏦 Bank Transfer</p>
+                              <p className="text-sm">Bank: {paymentMethod.bankName}</p>
+                              <p className="text-sm">Account: {paymentMethod.bankAccountNumber?.slice(-4) && `****${paymentMethod.bankAccountNumber.slice(-4)}`}</p>
+                            </div>
+                          )}
+
                         </div>
                         <button
                           onClick={() => setStep(2)}
@@ -570,12 +684,12 @@ export default function CheckoutPage() {
                         </button>
                       )}
                     </div>
-                    
+
                     <div>
                       {step < 3 ? (
                         <button
                           onClick={handleNextStep}
-                          className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          className="px-6 py-3 bg-gray-900 text-white rounded-full hover:bg-black transition-colors"
                         >
                           Continue
                         </button>
@@ -597,7 +711,7 @@ export default function CheckoutPage() {
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
                   <h3 className="text-xl font-semibold mb-4">Order Summary</h3>
-                  
+
                   {/* Items */}
                   <div className="space-y-3 mb-6">
                     {items.slice(0, 3).map((item) => (

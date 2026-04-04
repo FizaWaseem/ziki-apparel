@@ -3,6 +3,17 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 
+interface ShippingAddress {
+  name: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  country: string;
+  phone?: string;
+}
+
 interface Order {
   id: string;
   status: string;
@@ -10,7 +21,7 @@ interface Order {
   createdAt: string;
   updatedAt: string;
   trackingNumber?: string;
-  shippingAddress: any;
+  shippingAddress: ShippingAddress;
   paymentMethod: string;
   items: Array<{
     id: string;
@@ -140,7 +151,7 @@ const OrderTracking = () => {
             <div className="text-center py-12">
               <div className="text-gray-400 text-6xl mb-4">📦</div>
               <h3 className="text-xl font-medium text-gray-900 mb-2">No orders found</h3>
-              <p className="text-gray-600 mb-6">You haven't placed any orders yet.</p>
+              <p className="text-gray-600 mb-6">You haven&#39;t placed any orders yet.</p>
               <button
                 onClick={() => router.push('/products')}
                 className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
@@ -173,7 +184,7 @@ const OrderTracking = () => {
                           {order.status}
                         </span>
                         <p className="text-lg font-bold text-gray-900 mt-2">
-                          ${order.total.toFixed(2)}
+                          {order.total.toFixed(2)} Rs
                         </p>
                       </div>
                     </div>
@@ -237,7 +248,7 @@ const OrderTracking = () => {
                             </div>
                             <div className="text-right">
                               <p className="font-medium text-gray-900">
-                                ${(item.price * item.quantity).toFixed(2)}
+                                {(item.price * item.quantity).toFixed(2)} Rs
                               </p>
                             </div>
                           </div>

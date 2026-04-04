@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import Layout from '../../components/Layout';
+import AdminLayout from '../../components/AdminLayout';
 
 interface Order {
   id: string;
@@ -51,13 +51,13 @@ const AdminOrders = () => {
 
   useEffect(() => {
     if (status === 'loading') return;
-    
+
     if (!session) {
       router.push('/auth/signin');
       return;
     }
 
-    if (session.user.role !== 'admin') {
+    if (session.user.role !== 'ADMIN') {
       router.push('/');
       return;
     }
@@ -137,7 +137,7 @@ const AdminOrders = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <AdminLayout title="Order Management">
         <div className="min-h-screen bg-gray-50 py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
@@ -146,13 +146,13 @@ const AdminOrders = () => {
             </div>
           </div>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <Layout>
+      <AdminLayout title="Order Management">
         <div className="min-h-screen bg-gray-50 py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
@@ -160,12 +160,12 @@ const AdminOrders = () => {
             </div>
           </div>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
+    <AdminLayout title="Order Management">
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
@@ -269,11 +269,11 @@ const AdminOrders = () => {
                                 Quantity: {item.quantity}
                               </p>
                             </div>
-                            <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                            <p className="font-medium">{(item.price * item.quantity).toFixed(2)} Rs</p>
                           </div>
                         ))}
                         <div className="text-right pt-3 border-t">
-                          <p className="text-lg font-bold">Total: ${selectedOrder.total.toFixed(2)}</p>
+                          <p className="text-lg font-bold">Total: {selectedOrder.total.toFixed(2)} Rs</p>
                         </div>
                       </div>
                     </div>
@@ -288,18 +288,17 @@ const AdminOrders = () => {
                             {selectedOrder.status}
                           </p>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-3">
                           {['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((status) => (
                             <button
                               key={status}
                               onClick={() => updateOrderStatus(selectedOrder.id, status)}
                               disabled={isUpdating || selectedOrder.status === status}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                selectedOrder.status === status
-                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                              }`}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedOrder.status === status
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                }`}
                             >
                               {isUpdating ? 'Updating...' : `Mark as ${status}`}
                             </button>
@@ -333,7 +332,7 @@ const AdminOrders = () => {
           )}
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 };
 

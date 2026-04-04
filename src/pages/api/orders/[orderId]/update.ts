@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { sendOrderStatusUpdateEmail } from '../../../../lib/emailService';
+import { sendOrderStatusUpdateEmail } from '@/lib/emailService';
+import type { ShippingAddress } from '@/types/order';
 
 const updateOrderSchema = z.object({
   status: z.enum(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
@@ -12,7 +13,7 @@ const updateOrderSchema = z.object({
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
-  
+
   if (!session?.user) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
@@ -49,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Only allow users to view their own orders (unless admin)
-      if (order.userId !== session.user.id && session.user.role !== 'admin') {
+      if (order.userId !== session.user.id && session.user.role !== 'ADMIN') {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -63,16 +64,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'PATCH') {
     try {
       // Only allow admins to update order status
-      if (session.user.role !== 'admin') {
+      if (session.user.role !== 'ADMIN') {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
       const validation = updateOrderSchema.safeParse(req.body);
-      
+
       if (!validation.success) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Invalid update data',
-          errors: validation.error.issues 
+          errors: validation.error.issues
         });
       }
 
@@ -112,18 +113,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Send status update email if status changed
       if (currentOrder.status !== status) {
         try {
+          // Parse shipping address from JSON
+          let shippingAddress: ShippingAddress | string = '';
+
+          if (updatedOrder.shippingAddress) {
+            if (typeof updatedOrder.shippingAddress === 'string') {
+              try {
+                shippingAddress = JSON.parse(updatedOrder.shippingAddress) as ShippingAddress;
+              } catch {
+                shippingAddress = updatedOrder.shippingAddress;
+              }
+            } else {
+              shippingAddress = updatedOrder.shippingAddress as unknown as ShippingAddress;
+            }
+          }
+
           const emailOrderData = {
             id: updatedOrder.id,
             total: updatedOrder.total,
             status: updatedOrder.status,
-            paymentMethod: updatedOrder.paymentMethod,
-            shippingAddress: updatedOrder.shippingAddress,
+            paymentMethod: updatedOrder.paymentMethod || '',
+            shippingAddress,
             createdAt: updatedOrder.createdAt,
           };
 
           await sendOrderStatusUpdateEmail(
-            updatedOrder.user.email, 
-            emailOrderData, 
+            updatedOrder.user.email,
+            emailOrderData,
             status.toLowerCase()
           );
         } catch (emailError) {

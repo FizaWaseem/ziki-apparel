@@ -303,7 +303,7 @@ export default function OrderPage() {
                     </Link>
                     <Link
                       href="/orders"
-                      className="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="block w-full text-center px-4 py-2 bg-gray-900 text-white rounded-full hover:bg-black transition-colors"
                     >
                       View All Orders
                     </Link>

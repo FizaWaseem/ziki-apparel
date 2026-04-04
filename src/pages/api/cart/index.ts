@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit'
 
 interface CartItemWithDetails {
   quantity: number
-  variant?: { price?: number } | null
+  variant?: { price: number | null } | null
   product: { price: number }
 }
 
@@ -24,6 +25,11 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Rate limiting for cart operations
+  if (!rateLimitMiddleware(req, res, RATE_LIMITS.DEFAULT)) {
+    return
+  }
+
   const session = await getServerSession(req, res, authOptions)
 
   if (!session?.user?.id) {
@@ -62,7 +68,10 @@ export default async function handler(
       const total = subtotal + tax + shipping
 
       res.status(200).json({
-        items: cartItems,
+        items: cartItems.map((item: CartItemWithDetails) => ({
+          ...item,
+          price: item.variant?.price || item.product.price,
+        })),
         summary: {
           subtotal: Math.round(subtotal * 100) / 100,
           tax: Math.round(tax * 100) / 100,
@@ -113,7 +122,7 @@ export default async function handler(
           userId_productId_variantId: {
             userId,
             productId,
-            variantId: variantId || null,
+            variantId: typeof variantId === 'string' ? variantId : '',
           },
         },
       })

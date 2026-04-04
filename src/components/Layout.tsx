@@ -1,9 +1,11 @@
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useCart } from '@/contexts/CartContext'
+import SearchWithAutocomplete from './SearchWithAutocomplete'
+import WhatsAppButton from './WhatsAppButton'
 
 interface LayoutProps {
   children: ReactNode
@@ -13,8 +15,10 @@ export default function Layout({ children }: LayoutProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const { summary } = useCart()
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
 
   const handleSignOut = async () => {
+    setShowProfileMenu(false)
     await signOut({ redirect: false })
     router.push('/')
   }
@@ -47,6 +51,11 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
             </nav>
 
+            {/* Search */}
+            <div className="flex-1 max-w-lg mx-8 hidden lg:block">
+              <SearchWithAutocomplete placeholder="Search products..." />
+            </div>
+
             {/* User Menu */}
             <div className="flex items-center space-x-4">
               {session ? (
@@ -54,36 +63,64 @@ export default function Layout({ children }: LayoutProps) {
                   <Link href="/cart" className="relative text-gray-600 hover:text-gray-900">
                     Cart
                     {summary && summary.itemCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      <span className="absolute -top-2 -right-2 bg-gray-900 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {summary.itemCount}
                       </span>
                     )}
                   </Link>
-                  <div className="relative group">
-                    <button className="text-gray-600 hover:text-gray-900">
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      className="text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                    >
                       {session.user?.name || 'Account'}
+                      <span className={`transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''}`}>
+                        ▼
+                      </span>
                     </button>
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                      <div className="py-1">
-                        <Link href="/orders/tracking" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                          Order Tracking
-                        </Link>
-                        <Link href="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                          My Orders
-                        </Link>
-                        {session.user.role === 'admin' && (
-                          <Link href="/admin/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                            Admin Orders
-                          </Link>
-                        )}
-                        <button
-                          onClick={handleSignOut}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Sign Out
-                        </button>
-                      </div>
-                    </div>
+                    {showProfileMenu && (
+                      <>
+                        {/* Backdrop */}
+                        <div
+                          className="fixed inset-0 z-[98]"
+                          onClick={() => setShowProfileMenu(false)}
+                        />
+                        {/* Dropdown Menu */}
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-[99]">
+                          <div className="py-1">
+                            <Link 
+                              href="/orders/tracking" 
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={() => setShowProfileMenu(false)}
+                            >
+                              Order Tracking
+                            </Link>
+                            <Link 
+                              href="/orders" 
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={() => setShowProfileMenu(false)}
+                            >
+                              My Orders
+                            </Link>
+                            {session.user.role === 'admin' && (
+                              <Link 
+                                href="/admin/orders" 
+                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                onClick={() => setShowProfileMenu(false)}
+                              >
+                                Admin Orders
+                              </Link>
+                            )}
+                            <button
+                              onClick={handleSignOut}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 border-t border-gray-200 font-medium"
+                            >
+                              Logout
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               ) : (
@@ -93,7 +130,7 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                   <Link
                     href="/auth/signup"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                    className="bg-gray-900 text-white px-4 py-2 rounded-full hover:bg-black transition-colors"
                   >
                     Sign Up
                   </Link>
@@ -131,7 +168,15 @@ export default function Layout({ children }: LayoutProps) {
                 <li><a href="#" className="hover:text-white">Size Guide</a></li>
                 <li><a href="#" className="hover:text-white">Shipping Info</a></li>
                 <li><a href="#" className="hover:text-white">Returns</a></li>
-                <li><a href="#" className="hover:text-white">Contact Us</a></li>
+                <li><Link href="/contact" className="hover:text-white">Contact Us</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-gray-300">
+                <li><Link href="/about" className="hover:text-white">About Us</Link></li>
+                <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
               </ul>
             </div>
             <div>
@@ -148,6 +193,9 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
       </footer>
+
+      {/* WhatsApp Button */}
+      <WhatsAppButton />
     </div>
   )
 }

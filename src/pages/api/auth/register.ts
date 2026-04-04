@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit'
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -13,6 +14,11 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Rate limiting for registration attempts
+  if (!rateLimitMiddleware(req, res, RATE_LIMITS.AUTH)) {
+    return
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
   }

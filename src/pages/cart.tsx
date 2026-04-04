@@ -72,7 +72,7 @@ export default function CartPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Please sign in to view your cart</h1>
-            <Link href="/auth/signin" className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+            <Link href="/auth/signin" className="bg-gray-900 text-white px-6 py-3 rounded-full hover:bg-black transition-colors">
               Sign In
             </Link>
           </div>
@@ -86,7 +86,7 @@ export default function CartPage() {
       <Layout>
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading your cart...</p>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function CartPage() {
             <p className="text-gray-600 mb-8">Looks like you haven&apos;t added anything to your cart yet.</p>
             <Link
               href="/products"
-              className="bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 transition-colors"
+              className="bg-gray-900 text-white px-8 py-3 rounded-full hover:bg-black transition-colors"
             >
               Continue Shopping
             </Link>
@@ -225,7 +225,7 @@ export default function CartPage() {
 
               <Link
                 href="/checkout"
-                className="w-full mt-6 bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors block text-center"
+                className="w-full mt-6 bg-gray-900 text-white py-3 rounded-full hover:bg-black transition-colors block text-center"
               >
                 Proceed to Checkout
               </Link>
