@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,12 +22,8 @@ export default async function handler(
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string)
       const take = parseInt(limit as string)
 
-      // Build where clause
-      const where = {
-        status: 'ACTIVE' as const
-      } as const
-
-      const searchConditions = []
+      // Build where clause with proper typing
+      const searchConditions: Prisma.ProductWhereInput[] = []
       
       if (category) {
         searchConditions.push({
@@ -39,22 +36,22 @@ export default async function handler(
       if (search) {
         searchConditions.push({
           OR: [
-            { name: { contains: search as string, mode: 'insensitive' } },
-            { description: { contains: search as string, mode: 'insensitive' } }
+            { name: { contains: search as string, mode: 'insensitive' as Prisma.QueryMode } },
+            { description: { contains: search as string, mode: 'insensitive' as Prisma.QueryMode } }
           ]
         })
       }
 
       if (minPrice || maxPrice) {
-        const priceCondition: Record<string, number> = {}
+        const priceCondition: Prisma.FloatFilter = {}
         if (minPrice) priceCondition.gte = parseFloat(minPrice as string)
         if (maxPrice) priceCondition.lte = parseFloat(maxPrice as string)
         searchConditions.push({ price: priceCondition })
       }
 
-      const finalWhere = searchConditions.length > 0 
-        ? { ...where, AND: searchConditions }
-        : where
+      const finalWhere: Prisma.ProductWhereInput = searchConditions.length > 0 
+        ? { status: 'ACTIVE', AND: searchConditions }
+        : { status: 'ACTIVE' }
 
       // Build orderBy clause
       const orderBy = 
