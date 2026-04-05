@@ -97,7 +97,7 @@ export default function ProductsPage() {
       setLoading(true)
       try {
         const queryParams = new URLSearchParams()
-        
+
         Object.entries(router.query).forEach(([key, value]) => {
           if (value && typeof value === 'string') {
             queryParams.append(key, value)
@@ -106,7 +106,7 @@ export default function ProductsPage() {
 
         const response = await fetch(`/api/products?${queryParams.toString()}`)
         const data: ProductsResponse = await response.json()
-        
+
         setProducts(data.products)
         setPagination(data.pagination)
       } catch (error) {
@@ -166,7 +166,7 @@ export default function ProductsPage() {
 
   const applyFilters = () => {
     const query: Record<string, string> = {}
-    
+
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         query[key] = value
@@ -207,7 +207,7 @@ export default function ProductsPage() {
                   Showing {products.length} of {pagination.totalCount} products
                 </p>
               )}
-              
+
               {/* Sort Dropdown */}
               <select
                 value={`${filters.sort}-${filters.order}`}
@@ -239,6 +239,11 @@ export default function ProductsPage() {
                 </div>
               ))}
             </div>
+          ) : !products || products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Coming Soon</h2>
+              <p className="text-gray-600 text-lg">Coming soon new articles</p>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -258,11 +263,10 @@ export default function ProductsPage() {
                               src={product.images[0].url}
                               alt={product.images[0].alt || product.name}
                               fill
-                              className={`object-cover transition-opacity duration-300 ${
-                                hoveredProductId === product.id && product.images.length > 1
-                                  ? 'opacity-0'
-                                  : 'opacity-100'
-                              }`}
+                              className={`object-cover transition-opacity duration-300 ${hoveredProductId === product.id && product.images.length > 1
+                                ? 'opacity-0'
+                                : 'opacity-100'
+                                }`}
                             />
                             {/* Second Image on Hover */}
                             {product.images.length > 1 && (
@@ -270,9 +274,8 @@ export default function ProductsPage() {
                                 src={product.images[1].url}
                                 alt={product.images[1].alt || `${product.name} - Image 2`}
                                 fill
-                                className={`object-cover absolute inset-0 transition-opacity duration-300 ${
-                                  hoveredProductId === product.id ? 'opacity-100' : 'opacity-0'
-                                }`}
+                                className={`object-cover absolute inset-0 transition-opacity duration-300 ${hoveredProductId === product.id ? 'opacity-100' : 'opacity-0'
+                                  }`}
                               />
                             )}
                           </>
@@ -326,7 +329,7 @@ export default function ProductsPage() {
                       Previous
                     </button>
                   )}
-                  
+
                   {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
                     <button
                       key={page}
@@ -334,16 +337,15 @@ export default function ProductsPage() {
                         pathname: router.pathname,
                         query: { ...router.query, page }
                       })}
-                      className={`px-3 py-2 text-sm rounded-full transition-colors ${
-                        page === pagination.page
-                          ? 'bg-gray-900 text-white'
-                          : 'border border-gray-300 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-2 text-sm rounded-full transition-colors ${page === pagination.page
+                        ? 'bg-gray-900 text-white'
+                        : 'border border-gray-300 hover:bg-gray-50'
+                        }`}
                     >
                       {page}
                     </button>
                   ))}
-                  
+
                   {pagination.hasNextPage && (
                     <button
                       onClick={() => router.push({
@@ -370,7 +372,7 @@ export default function ProductsPage() {
             className="fixed inset-0 bg-black/30 z-40 transition-opacity"
             onClick={() => setShowFilterDrawer(false)}
           />
-          
+
           {/* Drawer Panel */}
           <div className="fixed right-0 top-0 h-full w-full md:w-96 bg-white z-50 overflow-y-auto shadow-lg animate-in slide-in-from-right">
             {/* Header */}

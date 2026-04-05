@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import Image from 'next/image'
 import Layout from '@/components/Layout'
+import LoadingButton from '@/components/LoadingButton'
 import { useCart } from '@/contexts/CartContext'
 
 interface ShippingAddress {
@@ -29,7 +30,7 @@ interface PaymentMethod {
 }
 
 export default function CheckoutPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const { items, summary, loading } = useCart()
   const formContainerRef = useRef<HTMLDivElement>(null)
@@ -55,12 +56,7 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   useEffect(() => {
-    if (session === null) {
-      router.push('/auth/signin?callbackUrl=/checkout')
-    }
-  }, [session, router])
-
-  useEffect(() => {
+    // Allow guest checkout - no redirect to signin
     if (!loading && (!items || items.length === 0)) {
       router.push('/cart')
     }
@@ -213,7 +209,7 @@ export default function CheckoutPage() {
     }
   }
 
-  if (!session || loading) {
+  if (status === 'loading' || loading) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -231,6 +227,49 @@ export default function CheckoutPage() {
       <div className="bg-gray-50 min-h-screen py-8">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
+            {/* User Status Banner */}
+            <div className="mb-6">
+              {session ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-blue-600">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">
+                        Logged in as <span className="font-semibold">{session.user?.name || session.user?.email}</span>
+                      </p>
+                      <p className="text-xs text-blue-700">{session.user?.email}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-amber-600">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-900">
+                        Checking out as a guest
+                      </p>
+                      <p className="text-xs text-amber-700">Email and phone number are required</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/auth/signin?callbackUrl=/checkout')}
+                    className="text-sm text-amber-700 hover:text-amber-900 font-semibold underline"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Progress Steps */}
             <div className="mb-8">
               <div className="flex items-center justify-center space-x-4">
@@ -694,13 +733,14 @@ export default function CheckoutPage() {
                           Continue
                         </button>
                       ) : (
-                        <button
+                        <LoadingButton
                           onClick={handlePlaceOrder}
-                          disabled={processing}
-                          className="px-8 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          loading={processing}
+                          variant="success"
+                          className="px-8 py-3"
                         >
-                          {processing ? 'Processing...' : 'Place Order'}
-                        </button>
+                          Place Order
+                        </LoadingButton>
                       )}
                     </div>
                   </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import Image from 'next/image'
+import LoadingButton from '../../../components/LoadingButton'
 
 interface HeroSlide {
   id: string
@@ -22,6 +23,7 @@ interface HeroSlide {
 export default function AdminHeroPage() {
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
   const [loading, setLoading] = useState(true)
+  const [formSubmitting, setFormSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -60,6 +62,7 @@ export default function AdminHeroPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    setFormSubmitting(true)
 
     try {
       if (editingId) {
@@ -108,6 +111,8 @@ export default function AdminHeroPage() {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMsg)
       setSuccess('')
+    } finally {
+      setFormSubmitting(false)
     }
   }
 
@@ -347,12 +352,14 @@ export default function AdminHeroPage() {
 
               {/* Form Actions */}
               <div className="flex gap-4 pt-4">
-                <button
+                <LoadingButton
                   type="submit"
-                  className="flex-1 bg-gray-900 text-white px-6 py-2 rounded-full hover:bg-black transition-colors font-semibold"
+                  loading={formSubmitting}
+                  variant="dark"
+                  className="flex-1 rounded-full"
                 >
                   {editingId ? 'Update Slide' : 'Create Slide'}
-                </button>
+                </LoadingButton>
                 {editingId && (
                   <button
                     type="button"

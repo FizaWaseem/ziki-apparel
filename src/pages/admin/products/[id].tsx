@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../../components/AdminLayout';
 import Image from 'next/image';
+import LoadingButton from '../../../components/LoadingButton';
 
 // Predefined color palette for Ziki Apparel
 const COLOR_PALETTE = [
@@ -806,13 +807,12 @@ export default function ProductForm() {
               >
                 Cancel
               </button>
-              <button
+              <LoadingButton
                 type="submit"
-                disabled={loading}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                loading={loading}
               >
-                {loading ? 'Saving...' : (isEditing ? 'Update Product' : 'Create Product')}
-              </button>
+                {isEditing ? 'Update Product' : 'Create Product'}
+              </LoadingButton>
             </div>
           </form>
         </div>

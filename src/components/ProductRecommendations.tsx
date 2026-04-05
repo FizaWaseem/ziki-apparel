@@ -30,10 +30,10 @@ interface ProductRecommendationsProps {
   limit?: number
 }
 
-export default function ProductRecommendations({ 
-  currentProductId, 
+export default function ProductRecommendations({
+  currentProductId,
   title = "You might also like",
-  limit = 4 
+  limit = 4
 }: ProductRecommendationsProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,9 +72,8 @@ export default function ProductRecommendations({
     return Array.from({ length: 5 }, (_, index) => (
       <span
         key={index}
-        className={`text-sm ${
-          index < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'
-        }`}
+        className={`text-sm ${index < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'
+          }`}
       >
         ★
       </span>
@@ -101,22 +100,27 @@ export default function ProductRecommendations({
     )
   }
 
-  if (!products.length) {
-    return null
+  if (!products || !products.length) {
+    return (
+      <div className="mt-16 flex flex-col items-center justify-center py-12">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">{title}</h2>
+        <p className="text-gray-600">Coming soon new articles</p>
+      </div>
+    )
   }
 
   return (
     <div className="mt-16">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-        <Link 
-          href="/products" 
+        <Link
+          href="/products"
           className="text-blue-600 hover:text-blue-500 font-medium"
         >
           View All Products →
         </Link>
       </div>
-      
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {products.map((product) => (
           <div key={product.id} className="bg-white rounded-lg shadow-sm overflow-hidden group hover:shadow-md transition-shadow">
@@ -130,7 +134,7 @@ export default function ProductRecommendations({
                   className="object-cover group-hover:scale-105 transition-transform duration-200"
                 />
               </Link>
-              
+
               {/* Discount Badge */}
               {product.comparePrice && product.comparePrice > product.price && (
                 <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
@@ -145,7 +149,7 @@ export default function ProductRecommendations({
                 {product.category && (
                   <p className="text-xs text-gray-500 mb-1">{product.category.name}</p>
                 )}
-                <Link 
+                <Link
                   href={`/products/${product.slug}`}
                   className="font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2 text-sm"
                 >

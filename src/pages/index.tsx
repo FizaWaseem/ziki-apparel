@@ -153,9 +153,8 @@ export default function Home() {
           {heroSlides.map((slide, index) => (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ${
-                index === currentSlide ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'
+                }`}
             >
               {slide.type === 'video' ? (
                 <video
@@ -176,10 +175,10 @@ export default function Home() {
                   style={{ backgroundImage: `url('${slide.src}')` }}
                 />
               )}
-              
+
               {/* Overlay */}
               <div className="absolute inset-0  bg-opacity-40" />
-              
+
               {/* Content */}
               <div className="absolute inset-0 flex items-center justify-center text-white z-10">
                 <div className="text-center max-w-4xl px-4">
@@ -227,11 +226,10 @@ export default function Home() {
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all ${
-                index === currentSlide 
-                  ? 'bg-white scale-110' 
+              className={`w-3 h-3 rounded-full transition-all ${index === currentSlide
+                  ? 'bg-white scale-110'
                   : 'bg-white bg-opacity-50 hover:bg-opacity-75'
-              }`}
+                }`}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}
@@ -262,6 +260,11 @@ export default function Home() {
               {[...Array(6)].map((_, index) => (
                 <div key={index} className="bg-gray-200 animate-pulse rounded-lg h-96"></div>
               ))}
+            </div>
+          ) : !featuredProducts || featuredProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Featured Products</h3>
+              <p className="text-gray-600">Coming soon new articles</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -338,7 +341,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Link href="/products?category=mens-jeans">
               <div className="relative h-64 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
-                <div 
+                <div
                   className="absolute inset-0 bg-cover bg-center transition-transform group-hover:scale-105"
                   style={{
                     backgroundImage: "url('https://images.unsplash.com/photo-1542272604-787c3835535d?w=800')"
@@ -355,7 +358,7 @@ export default function Home() {
 
             <Link href="/products?category=womens-jeans">
               <div className="relative h-64 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
-                <div 
+                <div
                   className="absolute inset-0 bg-cover bg-center transition-transform group-hover:scale-105"
                   style={{
                     backgroundImage: "url('https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=800')"
@@ -397,12 +400,12 @@ export default function Home() {
                       className="object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                   </Link>
-                  
+
                   {/* Popular Badge */}
                   <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-1 rounded">
                     🔥 Popular
                   </div>
-                  
+
                   {product.comparePrice && product.comparePrice > product.price && (
                     <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                       {Math.round((1 - product.price / product.comparePrice) * 100)}% OFF
@@ -415,7 +418,7 @@ export default function Home() {
                     {product.category && (
                       <p className="text-sm text-gray-500 mb-1">{product.category.name}</p>
                     )}
-                    <Link 
+                    <Link
                       href={`/products/${product.slug}`}
                       className="text-xl font-semibold text-gray-900 hover:text-blue-600 transition-colors"
                     >

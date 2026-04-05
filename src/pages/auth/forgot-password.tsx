@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Layout from '@/components/Layout'
+import LoadingButton from '@/components/LoadingButton'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -80,13 +81,13 @@ export default function ForgotPasswordPage() {
               />
             </div>
 
-            <button
+            <LoadingButton
               type="submit"
-              disabled={loading}
-              className="w-full bg-gray-900 hover:bg-black disabled:bg-gray-600 text-white font-medium py-2 rounded-md transition-colors"
+              loading={loading}
+              className="w-full"
             >
-              {loading ? 'Sending...' : 'Send Reset Link'}
-            </button>
+              Send Reset Link
+            </LoadingButton>
           </form>
 
           <div className="mt-6 text-center">

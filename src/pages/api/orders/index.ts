@@ -60,13 +60,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const session = await getServerSession(req, res, authOptions)
 
-  if (!session?.user?.id) {
-    return res.status(401).json({ message: 'Unauthorized' })
-  }
-
-  const userId = session.user.id
-
+  // For GET requests, require authentication
   if (req.method === 'GET') {
+    if (!session?.user?.id) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const userId = session.user.id
     try {
       const { all } = req.query;
 
@@ -141,6 +141,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const { shippingAddress, paymentMethod, items, summary } = validation.data
+
+      // Get or create user for guest checkout
+      let userId: string
+      if (session?.user?.id) {
+        // Authenticated user
+        userId = session.user.id
+      } else {
+        // Guest user - create a temporary guest account with email from shipping address
+        const guestUser = await prisma.user.findUnique({
+          where: { email: shippingAddress.email }
+        })
+
+        if (guestUser) {
+          // Email already exists
+          userId = guestUser.id
+        } else {
+          // Create a new guest user
+          const newGuestUser = await prisma.user.create({
+            data: {
+              email: shippingAddress.email,
+              name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+              role: 'CUSTOMER' // Guest users are treated as customers
+            }
+          })
+          userId = newGuestUser.id
+        }
+      }
 
       // Check if all products and variants exist and have sufficient stock
       for (const item of items) {
@@ -237,10 +264,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        // Clear user's cart
-        await tx.cartItem.deleteMany({
-          where: { userId },
-        })
+        // Clear user's cart if authenticated
+        if (session?.user?.id) {
+          await tx.cartItem.deleteMany({
+            where: { userId: session.user.id },
+          })
+        }
 
         return newOrder
       })

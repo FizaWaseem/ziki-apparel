@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import AdminLayout from '../../../components/AdminLayout'
 import Image from 'next/image'
+import LoadingButton from '../../../components/LoadingButton'
 
 interface Category {
   id: string
@@ -27,6 +28,7 @@ export default function CategoriesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [formSubmitting, setFormSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [formData, setFormData] = useState<CategoryFormData>({
@@ -103,6 +105,7 @@ export default function CategoriesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormSubmitting(true)
 
     try {
       const url = editingCategory
@@ -139,6 +142,8 @@ export default function CategoriesPage() {
       const errorMsg = err instanceof Error ? err.message : 'Error saving category'
       setError(errorMsg)
       setSuccess('')
+    } finally {
+      setFormSubmitting(false)
     }
   }
 
@@ -326,12 +331,14 @@ export default function CategoriesPage() {
 
               {/* Form Actions */}
               <div className="flex gap-4 pt-4">
-                <button
+                <LoadingButton
                   type="submit"
-                  className="flex-1 bg-gray-900 text-white px-6 py-2 rounded-full hover:bg-black transition-colors font-semibold"
+                  loading={formSubmitting}
+                  variant="dark"
+                  className="flex-1 rounded-full"
                 >
                   {editingCategory ? 'Update Category' : 'Create Category'}
-                </button>
+                </LoadingButton>
                 <button
                   type="button"
                   onClick={handleCloseForm}

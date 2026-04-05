@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Layout from '@/components/Layout'
+import LoadingButton from '@/components/LoadingButton'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -170,13 +171,14 @@ export default function ContactPage() {
                   />
                 </div>
 
-                <button
+                <LoadingButton
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-gray-900 text-white py-3 px-4 rounded-full font-semibold hover:bg-black disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  loading={isSubmitting}
+                  variant="dark"
+                  className="w-full rounded-full"
                 >
-                  {isSubmitting ? 'Sending...' : 'Send Message'}
-                </button>
+                  Send Message
+                </LoadingButton>
               </form>
             </div>
 

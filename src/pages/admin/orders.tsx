@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../components/AdminLayout';
+import LoadingButton from '../../components/LoadingButton';
 
 interface Order {
   id: string;
@@ -291,17 +292,16 @@ const AdminOrders = () => {
 
                         <div className="grid grid-cols-2 gap-3">
                           {['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((status) => (
-                            <button
+                            <LoadingButton
                               key={status}
                               onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                              disabled={isUpdating || selectedOrder.status === status}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedOrder.status === status
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                }`}
+                              disabled={selectedOrder.status === status}
+                              loading={isUpdating}
+                              variant={selectedOrder.status === status ? 'secondary' : 'primary'}
+                              className="text-sm"
                             >
-                              {isUpdating ? 'Updating...' : `Mark as ${status}`}
-                            </button>
+                              Mark as {status}
+                            </LoadingButton>
                           ))}
                         </div>
 
