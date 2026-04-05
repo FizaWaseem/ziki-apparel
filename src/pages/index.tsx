@@ -26,6 +26,17 @@ interface Product {
   featured: boolean
 }
 
+interface Category {
+  id: string
+  name: string
+  slug: string
+  image: string | null
+  description: string | null
+  _count: {
+    products: number
+  }
+}
+
 interface HeroSlide {
   id: string
   type: 'video' | 'image'
@@ -36,6 +47,26 @@ interface HeroSlide {
   ctaText: string
   ctaLink: string
 }
+
+// Default categories with fallback images
+const DEFAULT_CATEGORIES: Category[] = [
+  {
+    id: 'default-1',
+    name: "Men's Jeans",
+    slug: 'mens-jeans',
+    image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=800',
+    description: null,
+    _count: { products: 0 }
+  },
+  {
+    id: 'default-2',
+    name: "Women's Jeans",
+    slug: 'womens-jeans',
+    image: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=800',
+    description: null,
+    _count: { products: 0 }
+  },
+]
 
 // Fallback hero slides (used if database is empty)
 const FALLBACK_HERO_SLIDES: HeroSlide[] = [
@@ -82,13 +113,41 @@ const FALLBACK_HERO_SLIDES: HeroSlide[] = [
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(FALLBACK_HERO_SLIDES)
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [currentSlide, setCurrentSlide] = useState(0)
 
   useEffect(() => {
     fetchHeroSlides()
     fetchFeaturedProducts()
+    fetchCategories()
   }, [])
+
+  // Fetch categories from database
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      const data = await response.json()
+      if (Array.isArray(data) && data.length > 0) {
+        // Take first 2 categories, or use defaults if less than 2
+        const categoriesToShow = data.slice(0, 2)
+        if (categoriesToShow.length === 2) {
+          setCategories(categoriesToShow)
+        } else {
+          // Fallback: mix fetched with defaults
+          setCategories([categoriesToShow[0], DEFAULT_CATEGORIES[1]])
+        }
+      } else {
+        setCategories(DEFAULT_CATEGORIES)
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      setCategories(DEFAULT_CATEGORIES)
+    } finally {
+      setCategoriesLoading(false)
+    }
+  }
 
   // Fetch hero slides from database
   const fetchHeroSlides = async () => {
@@ -203,7 +262,7 @@ export default function Home() {
         {/* Navigation Arrows */}
         <button
           onClick={prevSlide}
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-all z-20"
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-all z-20"
           aria-label="Previous slide"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +271,7 @@ export default function Home() {
         </button>
         <button
           onClick={nextSlide}
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-all z-20"
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-all z-20"
           aria-label="Next slide"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,8 +286,8 @@ export default function Home() {
               key={index}
               onClick={() => goToSlide(index)}
               className={`w-3 h-3 rounded-full transition-all ${index === currentSlide
-                  ? 'bg-white scale-110'
-                  : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                ? 'bg-white scale-110'
+                : 'bg-white bg-opacity-50 hover:bg-opacity-75'
                 }`}
               aria-label={`Go to slide ${index + 1}`}
             />
@@ -338,41 +397,36 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Link href="/products?category=mens-jeans">
-              <div className="relative h-64 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform group-hover:scale-105"
-                  style={{
-                    backgroundImage: "url('https://images.unsplash.com/photo-1542272604-787c3835535d?w=800')"
-                  }}
-                ></div>
-                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <h3 className="text-2xl font-bold mb-2">Men&apos;s Jeans</h3>
-                    <p className="text-lg">Classic & Modern Styles</p>
+          {categoriesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {[...Array(2)].map((_, index) => (
+                <div key={index} className="relative h-64 bg-gray-300 animate-pulse rounded-lg"></div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {categories.map((category) => (
+                <Link key={category.id} href={`/products?category=${category.slug}`}>
+                  <div className="relative h-64 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform group-hover:scale-105"
+                      style={{
+                        backgroundImage: category.image ? `url('${category.image}')` : 'url(https://images.unsplash.com/photo-1542272604-787c3835535d?w=800)'
+                      }}
+                    ></div>
+                    <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <h3 className="text-2xl font-bold mb-2">{category.name}</h3>
+                        {category._count?.products > 0 && (
+                          <p className="text-lg">{category._count.products} products</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/products?category=womens-jeans">
-              <div className="relative h-64 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform group-hover:scale-105"
-                  style={{
-                    backgroundImage: "url('https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=800')"
-                  }}
-                ></div>
-                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <h3 className="text-2xl font-bold mb-2">Women&apos;s Jeans</h3>
-                    <p className="text-lg">Trendy & Comfortable</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -484,21 +538,11 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-semibold mb-2">Free Shipping</h3>
               <p className="text-gray-600">
-                Enjoy free shipping on all orders over $100. Fast and reliable delivery worldwide.
+                Enjoy free shipping on all orders over 5000. Fast and reliable delivery worldwide.
               </p>
             </div>
 
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Easy Returns</h3>
-              <p className="text-gray-600">
-                Not satisfied? Return your purchase within 30 days for a full refund.
-              </p>
-            </div>
+
           </div>
         </div>
       </section>

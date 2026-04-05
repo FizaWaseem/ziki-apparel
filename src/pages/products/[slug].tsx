@@ -94,6 +94,27 @@ export default function ProductDetailPage() {
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [showCartSidebar, setShowCartSidebar] = useState(false)
+  const [cartSummary, setCartSummary] = useState<{ subtotal: number; tax: number; shipping: number; total: number } | null>(null)
+
+  // Calculate cart summary when items change (for guests)
+  useEffect(() => {
+    if (items && items.length > 0) {
+      const subtotal = items.reduce((sum, item) => {
+        const itemPrice = item.variant?.price || item.product?.price || item.price || 0
+        return sum + (itemPrice * item.quantity)
+      }, 0)
+      const tax = subtotal * 0.17
+      const shipping = subtotal > 5000 ? 0 : 300
+      setCartSummary({
+        subtotal,
+        tax,
+        shipping,
+        total: subtotal + tax + shipping
+      })
+    } else {
+      setCartSummary(null)
+    }
+  }, [items])
 
   useEffect(() => {
     if (slug) {
@@ -147,16 +168,13 @@ export default function ProductDetailPage() {
   }, [toast])
 
   const addToCart = async () => {
-    if (!session) {
-      router.push('/auth/signin')
-      return
-    }
-
     if (!product || !selectedVariant) return
 
     setAddingToCart(true)
     try {
-      const success = await addToCartContext(product.id, selectedVariant.id, quantity)
+      // Both authenticated and guest users can add to cart
+      // Pass productSlug for guests to fetch product details
+      const success = await addToCartContext(product.id, selectedVariant.id, quantity, product.slug)
       if (success) {
         setToast({ message: '✓ Product added to cart!', type: 'success' })
         // Show cart sidebar after a brief delay
@@ -466,13 +484,40 @@ export default function ProductDetailPage() {
             <button
               onClick={() => {
                 if (selectedVariant) {
-                  router.push('/checkout');
+                  // For authenticated users, add to cart then checkout
+                  if (session?.user?.id) {
+                    setAddingToCart(true)
+                    addToCartContext(product.id, selectedVariant.id, quantity, product.slug).then(success => {
+                      if (success) {
+                        router.push('/checkout')
+                      } else {
+                        setToast({ message: 'Error adding to cart', type: 'error' })
+                        setAddingToCart(false)
+                      }
+                    }).catch(error => {
+                      console.error('Error adding to cart:', error)
+                      setToast({ message: 'Error adding to cart', type: 'error' })
+                      setAddingToCart(false)
+                    })
+                  } else {
+                    // For guests, go directly to checkout
+                    // Pass product info via router state
+                    router.push({
+                      pathname: '/checkout',
+                      query: { 
+                        productSlug: product.slug,
+                        productId: product.id,
+                        variantId: selectedVariant.id,
+                        quantity: quantity
+                      }
+                    })
+                  }
                 }
               }}
-              disabled={!selectedVariant || selectedVariant.stock === 0}
+              disabled={!selectedVariant || selectedVariant.stock === 0 || addingToCart}
               className="w-full px-4 py-3 bg-gray-900 text-white font-medium text-sm rounded-full hover:bg-black transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Buy Now
+              {addingToCart ? 'Adding to cart...' : 'Buy Now'}
             </button>
 
             {/* Color Variation Disclaimer */}
@@ -772,13 +817,13 @@ export default function ProductDetailPage() {
                   <div className="flex justify-between items-baseline">
                     <span className="text-xs text-gray-600 uppercase tracking-wider">Subtotal</span>
                     <span className="text-sm text-gray-900 font-medium">
-                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PKR' }).format(summary?.subtotal || 0)}
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PKR' }).format(cartSummary?.subtotal || summary?.subtotal || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline">
                     <span className="text-xs text-gray-600 uppercase tracking-wider">Shipping</span>
                     <span className="text-sm text-gray-900 font-medium">
-                      {summary?.shipping === 0 ? 'Free' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PKR' }).format(summary?.shipping || 0)}
+                      {(cartSummary?.shipping || summary?.shipping) === 0 ? 'Free' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PKR' }).format(cartSummary?.shipping || summary?.shipping || 0)}
                     </span>
                   </div>
                 </div>
@@ -788,7 +833,7 @@ export default function ProductDetailPage() {
                   <div className="flex justify-between items-baseline mb-2">
                     <span className="text-base font-semibold text-gray-900">Total</span>
                     <span className="text-xl font-bold text-gray-900">
-                      PKR {Math.round(summary?.total || 0).toLocaleString()}
+                      PKR {Math.round(cartSummary?.total || summary?.total || 0).toLocaleString()}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">Taxes and shipping calculated at checkout</p>

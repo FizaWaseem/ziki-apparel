@@ -15,6 +15,7 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -23,12 +24,20 @@ export default function SignUp() {
       ...formData,
       [e.target.name]: e.target.value,
     })
+    // Clear field error when user starts typing
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({
+        ...fieldErrors,
+        [e.target.name]: ''
+      })
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setFieldErrors({})
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
@@ -52,12 +61,19 @@ export default function SignUp() {
       const data = await response.json()
 
       if (response.ok) {
-        router.push('/auth/signin?message=Account created successfully')
+        router.push('/auth/signin?message=Account created successfully! Please sign in.')
       } else {
-        setError(data.message || 'Something went wrong')
+        // Handle field-specific errors
+        if (data.errors && typeof data.errors === 'object') {
+          setFieldErrors(data.errors)
+          setError(data.message || 'Please fix the errors below')
+        } else {
+          setError(data.message || 'Something went wrong')
+        }
       }
-    } catch {
-      setError('Something went wrong')
+    } catch (err) {
+      console.error('Sign up error:', err)
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -85,11 +101,16 @@ export default function SignUp() {
                 type="text"
                 autoComplete="name"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm ${
+                  fieldErrors.name ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Full name"
                 value={formData.name}
                 onChange={handleChange}
               />
+              {fieldErrors.name && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
+              )}
             </div>
             <div>
               <input
@@ -98,11 +119,16 @@ export default function SignUp() {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm ${
+                  fieldErrors.email ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Email address"
                 value={formData.email}
                 onChange={handleChange}
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+              )}
             </div>
             <div className="relative">
               <input
@@ -111,11 +137,16 @@ export default function SignUp() {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 required
-                className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 pr-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm ${
+                  fieldErrors.password ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
               />
+              {fieldErrors.password && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+              )}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -174,8 +205,18 @@ export default function SignUp() {
             </LoadingButton>
           </div>
 
-          <div className="text-center">
-            <Link href="/auth/signin" className="text-indigo-600 hover:text-indigo-500">
+          <div className="text-center space-y-3">
+            <div>
+              <p className="text-gray-600 text-sm mb-2">Or continue as a guest</p>
+              <button
+                type="button"
+                onClick={() => router.push('/products')}
+                className="w-full bg-gray-100 text-gray-900 hover:bg-gray-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Continue as Guest
+              </button>
+            </div>
+            <Link href="/auth/signin" className="block text-indigo-600 hover:text-indigo-500">
               Already have an account? Sign in
             </Link>
           </div>

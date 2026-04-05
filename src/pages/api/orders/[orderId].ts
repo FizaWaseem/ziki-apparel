@@ -6,19 +6,16 @@ import { prisma } from '@/lib/prisma'
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions)
 
-  if (!session?.user?.id) {
-    return res.status(401).json({ message: 'Unauthorized' })
-  }
-
   const { orderId } = req.query
-  const userId = session.user.id
 
   if (req.method === 'GET') {
     try {
+      // Allow guests to view their order by orderId (no session required)
+      // For authenticated users, they can only see their own orders
       const order = await prisma.order.findFirst({
         where: { 
           id: orderId as string,
-          userId, // Ensure user can only access their own orders
+          ...(session?.user?.id && { userId: session.user.id }) // If authenticated, ensure user owns order
         },
         include: {
           items: {

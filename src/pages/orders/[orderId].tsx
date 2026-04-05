@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Layout from '@/components/Layout'
@@ -51,17 +50,11 @@ interface Order {
 
 export default function OrderPage() {
   const router = useRouter()
-  const { data: session } = useSession()
   const { orderId, success } = router.query
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (session === null) {
-      router.push('/auth/signin')
-      return
-    }
-
     if (orderId) {
       const fetchOrder = async () => {
         try {
@@ -82,7 +75,7 @@ export default function OrderPage() {
       
       fetchOrder()
     }
-  }, [session, orderId, router])
+  }, [orderId, router])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -118,7 +111,7 @@ export default function OrderPage() {
     }
   }
 
-  if (!session || loading) {
+  if (loading) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -301,12 +294,7 @@ export default function OrderPage() {
                     >
                       Contact Support
                     </Link>
-                    <Link
-                      href="/orders"
-                      className="block w-full text-center px-4 py-2 bg-gray-900 text-white rounded-full hover:bg-black transition-colors"
-                    >
-                      View All Orders
-                    </Link>
+                  
                   </div>
                 </div>
               </div>

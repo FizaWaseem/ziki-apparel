@@ -29,10 +29,18 @@ interface PaymentMethod {
   bankName?: string
 }
 
+interface CartSummary {
+  subtotal: number
+  tax: number
+  shipping: number
+  total: number
+  itemCount: number
+}
+
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { items, summary, loading } = useCart()
+  const { items, summary, loading, addToCart: addToCartContext, clearCart } = useCart()
   const formContainerRef = useRef<HTMLDivElement>(null)
 
   const [step, setStep] = useState(1) // 1: Shipping, 2: Payment, 3: Review
@@ -54,13 +62,60 @@ export default function CheckoutPage() {
 
   const [processing, setProcessing] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  const [itemsProcessed, setItemsProcessed] = useState(false)
+  const [displaySummary, setDisplaySummary] = useState<CartSummary | null>(null)
 
+  // Calculate display summary when items change
   useEffect(() => {
-    // Allow guest checkout - no redirect to signin
-    if (!loading && (!items || items.length === 0)) {
-      router.push('/cart')
+    if (items && items.length > 0) {
+      console.log('Items for summary calculation:', items)
+      const subtotal = items.reduce((sum, item) => {
+        const itemPrice = item.variant?.price || item.product?.price || item.price || 0
+        console.log(`Item ${item.productId}: variant.price=${item.variant?.price}, product.price=${item.product?.price}, item.price=${item.price}, calculated=${itemPrice}`)
+        return sum + (itemPrice * item.quantity)
+      }, 0)
+      const tax = subtotal * 0.17 // 17% tax
+      const shipping = subtotal > 5000 ? 0 : 300 // Free shipping over 5000
+      console.log('Summary calculated - subtotal:', subtotal, 'tax:', tax, 'shipping:', shipping)
+      setDisplaySummary({
+        subtotal,
+        tax,
+        shipping,
+        total: subtotal + tax + shipping,
+        itemCount: items.length
+      })
+    } else if (summary) {
+      setDisplaySummary(summary)
     }
-  }, [items, loading, router])
+  }, [items, summary])
+
+  // Handle "Buy Now" product parameters for guests
+  useEffect(() => {
+    const processProductParams = async () => {
+      if (router.isReady && !itemsProcessed) {
+        const { productId, productSlug, variantId, quantity } = router.query
+        
+        if (productId && variantId && !loading) {
+          // Guest "Buy Now" - add product to cart
+          const qty = parseInt(quantity as string) || 1
+          await addToCartContext(productId as string, variantId as string, qty, productSlug as string)
+          
+          // Clear the query params
+          router.replace('/checkout', undefined, { shallow: true })
+          setItemsProcessed(true)
+        } else if (!productId && !variantId && !loading) {
+          // No product params, check if we should redirect
+          if ((!items || items.length === 0)) {
+            router.push('/cart')
+          }
+          setItemsProcessed(true)
+        }
+      }
+    }
+
+    processProductParams()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query, loading, itemsProcessed, addToCartContext])
 
   // Scroll to form when step changes
   useEffect(() => {
@@ -146,9 +201,33 @@ export default function CheckoutPage() {
   }
 
   const handlePlaceOrder = async () => {
+    // Validate items exist
+    if (!items || items.length === 0) {
+      alert('Your cart is empty. Please add items before placing an order.')
+      return
+    }
+
     setProcessing(true)
 
     try {
+      // Calculate summary for guests if not available from API
+      let orderSummary = summary
+      if (!orderSummary && items.length > 0) {
+        const subtotal = items.reduce((sum, item) => {
+          const itemPrice = item.variant?.price || item.product?.price || item.price || 0
+          return sum + (itemPrice * item.quantity)
+        }, 0)
+        const tax = subtotal * 0.17 // 17% tax
+        const shipping = subtotal > 5000 ? 0 : 300 // Free shipping over 5000
+        orderSummary = {
+          subtotal,
+          tax,
+          shipping,
+          total: subtotal + tax + shipping,
+          itemCount: items.length
+        }
+      }
+
       // Handle file conversion for Jazz Cash screenshot
       let screenshotPath: string | undefined
       if (paymentMethod.type === 'jazzcash' && paymentMethod.jazzCashScreenshot) {
@@ -181,9 +260,9 @@ export default function CheckoutPage() {
           productId: item.productId,
           variantId: item.variantId,
           quantity: item.quantity,
-          price: item.variant?.price || item.product.price
+          price: item.variant?.price || item.product?.price || item.price || 0
         })),
-        summary
+        summary: orderSummary
       }
 
       const response = await fetch('/api/orders', {
@@ -196,6 +275,8 @@ export default function CheckoutPage() {
 
       if (response.ok) {
         const order = await response.json()
+        // Clear guest cart on successful order
+        clearCart()
         router.push(`/orders/${order.id}?success=true`)
       } else {
         const error = await response.json()
@@ -685,14 +766,14 @@ export default function CheckoutPage() {
                           {items.map((item) => (
                             <div key={item.id} className="flex items-center space-x-3">
                               <Image
-                                src={item.product.images[0]?.url || '/placeholder.jpg'}
-                                alt={item.product.name}
+                                src={item.product?.images?.[0]?.url || '/placeholder.jpg'}
+                                alt={item.product?.name || 'Product'}
                                 width={60}
                                 height={60}
                                 className="rounded object-cover"
                               />
                               <div className="flex-1">
-                                <h4 className="font-medium">{item.product.name}</h4>
+                                <h4 className="font-medium">{item.product?.name || 'Product'}</h4>
                                 {item.variant && (
                                   <p className="text-sm text-gray-600">
                                     Size: {item.variant.size}
@@ -702,7 +783,7 @@ export default function CheckoutPage() {
                                 <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                               </div>
                               <div className="font-semibold">
-                                {formatPrice((item.variant?.price || item.product.price) * item.quantity)}
+                                {formatPrice((item.variant?.price || item.product?.price || item.price || 0) * item.quantity)}
                               </div>
                             </div>
                           ))}
@@ -757,18 +838,18 @@ export default function CheckoutPage() {
                     {items.slice(0, 3).map((item) => (
                       <div key={item.id} className="flex items-center space-x-3">
                         <Image
-                          src={item.product.images[0]?.url || '/placeholder.jpg'}
-                          alt={item.product.name}
+                          src={item.product?.images?.[0]?.url || '/placeholder.jpg'}
+                          alt={item.product?.name || 'Product'}
                           width={40}
                           height={40}
                           className="rounded object-cover"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{item.product.name}</p>
+                          <p className="text-sm font-medium truncate">{item.product?.name || 'Product'}</p>
                           <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                         </div>
-                        <div className="text-sm font-semibold">
-                          {formatPrice((item.variant?.price || item.product.price) * item.quantity)}
+                        <div className="text-right">
+                          {formatPrice((item.variant?.price || item.product?.price || item.price || 0) * item.quantity)}
                         </div>
                       </div>
                     ))}
@@ -783,19 +864,19 @@ export default function CheckoutPage() {
                   <div className="space-y-2 border-t pt-4">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal</span>
-                      <span>{formatPrice(summary?.subtotal || 0)}</span>
+                      <span>{formatPrice(displaySummary?.subtotal || summary?.subtotal || 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Shipping</span>
-                      <span>{summary?.shipping === 0 ? 'FREE' : formatPrice(summary?.shipping || 0)}</span>
+                      <span>{(displaySummary?.shipping || summary?.shipping) === 0 ? 'FREE' : formatPrice(displaySummary?.shipping || summary?.shipping || 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Tax</span>
-                      <span>{formatPrice(summary?.tax || 0)}</span>
+                      <span>{formatPrice(displaySummary?.tax || summary?.tax || 0)}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold border-t pt-2">
                       <span>Total</span>
-                      <span className="text-blue-600">{formatPrice(summary?.total || 0)}</span>
+                      <span className="text-blue-600">{formatPrice(displaySummary?.total || summary?.total || 0)}</span>
                     </div>
                   </div>
 

@@ -14,8 +14,11 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { data: session } = useSession()
   const router = useRouter()
-  const { summary } = useCart()
+  const { summary, items } = useCart()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+
+  // Get item count for both authenticated and guest users
+  const itemCount = summary?.itemCount || items?.length || 0
 
   const handleSignOut = async () => {
     setShowProfileMenu(false)
@@ -58,18 +61,20 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* User Menu */}
             <div className="flex items-center space-x-4">
+              {/* Cart Icon - Show for both authenticated and guest users */}
+              <Link href="/cart" className="relative text-gray-600 hover:text-gray-900">
+                Cart
+                {itemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-gray-900 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </Link>
+
               {session ? (
                 <>
-                  <Link href="/cart" className="relative text-gray-600 hover:text-gray-900">
-                    Cart
-                    {summary && summary.itemCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-gray-900 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {summary.itemCount}
-                      </span>
-                    )}
-                  </Link>
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={() => setShowProfileMenu(!showProfileMenu)}
                       className="text-gray-600 hover:text-gray-900 flex items-center gap-1"
                     >
@@ -88,23 +93,23 @@ export default function Layout({ children }: LayoutProps) {
                         {/* Dropdown Menu */}
                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-[99]">
                           <div className="py-1">
-                            <Link 
-                              href="/orders/tracking" 
+                            <Link
+                              href="/orders/tracking"
                               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                               onClick={() => setShowProfileMenu(false)}
                             >
                               Order Tracking
                             </Link>
-                            <Link 
-                              href="/orders" 
+                            <Link
+                              href="/orders"
                               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                               onClick={() => setShowProfileMenu(false)}
                             >
                               My Orders
                             </Link>
                             {session.user.role === 'admin' && (
-                              <Link 
-                                href="/admin/orders" 
+                              <Link
+                                href="/admin/orders"
                                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 onClick={() => setShowProfileMenu(false)}
                               >
@@ -182,9 +187,9 @@ export default function Layout({ children }: LayoutProps) {
             <div>
               <h4 className="font-semibold mb-4">Connect</h4>
               <ul className="space-y-2 text-gray-300">
-                <li><a href="#" className="hover:text-white">Instagram</a></li>
-                <li><a href="#" className="hover:text-white">Facebook</a></li>
-                <li><a href="#" className="hover:text-white">Twitter</a></li>
+                <li><a href="https://www.instagram.com/zikiapparel12/" target="_blank" className="hover:text-white">Instagram</a></li>
+                <li><a href="https://www.facebook.com/p/Ziki-Apparel-61562549624637/" target="_blank" className="hover:text-white">Facebook</a></li>
+                <li><a href="https://www.tiktok.com/@ziki.apparel?is_from_webapp=1&sender_device=pc" target="_blank" className="hover:text-white">Tiktok</a></li>
               </ul>
             </div>
           </div>

@@ -12,12 +12,8 @@ export default function CartPage() {
   const { items, summary, loading, updateQuantity, removeItem } = useCart()
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    if (session === null) {
-      // Not logged in, redirect to sign in
-      router.push('/auth/signin')
-    }
-  }, [session, router])
+  // Allow guests to view cart - removed forced signin
+  // Guests can see their items and proceed to checkout
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     setUpdatingItems(prev => new Set(prev).add(itemId))
@@ -66,20 +62,7 @@ export default function CartPage() {
     }).format(price)
   }
 
-  if (!session) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Please sign in to view your cart</h1>
-            <Link href="/auth/signin" className="bg-gray-900 text-white px-6 py-3 rounded-full hover:bg-black transition-colors">
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </Layout>
-    )
-  }
+  // Allow guest carts to be shown (authenticated users will have server-side cart, guests have session cart)
 
   if (loading) {
     return (

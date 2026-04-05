@@ -19,6 +19,28 @@ export default function SignIn() {
     setError('')
 
     try {
+      // First verify credentials to get specific error type
+      const verifyResponse = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      })
+
+      const verifyData = await verifyResponse.json()
+
+      if (!verifyResponse.ok) {
+        // Show specific error message
+        setError(verifyData.message || 'Authentication failed')
+        setLoading(false)
+        return
+      }
+
+      // If verification passed, proceed with NextAuth signin
       const result = await signIn('credentials', {
         email,
         password,
@@ -26,7 +48,7 @@ export default function SignIn() {
       })
 
       if (result?.error) {
-        setError('Invalid credentials')
+        setError('Unable to sign in. Please try again.')
       } else {
         // Get updated session to check role
         const session = await getSession()
@@ -36,8 +58,9 @@ export default function SignIn() {
           router.push('/')
         }
       }
-    } catch {
-      setError('Something went wrong')
+    } catch (error) {
+      console.error('Sign in error:', error)
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -112,8 +135,21 @@ export default function SignIn() {
             </LoadingButton>
           </div>
 
-          <div className="text-center">
-            <Link href="/auth/signup" className="text-indigo-600 hover:text-indigo-500">
+          <div className="text-center space-y-3">
+            <div>
+              <p className="text-gray-600 text-sm mb-2">Or continue as a guest</p>
+              <button
+                type="button"
+                onClick={() => router.push('/products')}
+                className="w-full bg-gray-100 text-gray-900 hover:bg-gray-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Continue as Guest
+              </button>
+            </div>
+            <Link href="/auth/forgot-password" className="block text-indigo-600 hover:text-indigo-500 text-sm">
+              Forgot password?
+            </Link>
+            <Link href="/auth/signup" className="block text-indigo-600 hover:text-indigo-500">
               Don&apos;t have an account? Sign up
             </Link>
           </div>

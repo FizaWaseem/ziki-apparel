@@ -188,16 +188,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Delete product with transaction (cascade delete will handle related records)
       await prisma.$transaction(async (tx) => {
-        // Delete related records first
+        // Delete related records first (in order of dependencies)
+        await tx.orderItem.deleteMany({
+          where: { productId: id },
+        });
+
+        await tx.review.deleteMany({
+          where: { productId: id },
+        });
+
+        await tx.cartItem.deleteMany({
+          where: { productId: id },
+        });
+
         await tx.productImage.deleteMany({
           where: { productId: id },
         });
 
         await tx.productVariant.deleteMany({
-          where: { productId: id },
-        });
-
-        await tx.cartItem.deleteMany({
           where: { productId: id },
         });
 

@@ -32,7 +32,12 @@ export default async function handler(
     })
 
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' })
+      return res.status(400).json({
+        success: false,
+        message: 'This email is already registered. Please sign in or use a different email.',
+        type: 'email_exists',
+        code: 'USER_EXISTS'
+      })
     }
 
     // Hash password
@@ -54,19 +59,41 @@ export default async function handler(
     })
 
     res.status(201).json({
-      message: 'User created successfully',
+      success: true,
+      message: 'Account created successfully! Please sign in.',
+      type: 'success',
       user
     })
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      const fieldErrors: { [key: string]: string } = {}
+      error.issues.forEach(issue => {
+        const field = issue.path[0] as string
+        if (field === 'email') {
+          fieldErrors[field] = 'Please enter a valid email address'
+        } else if (field === 'password') {
+          fieldErrors[field] = 'Password must be at least 6 characters'
+        } else if (field === 'name') {
+          fieldErrors[field] = 'Name must be at least 2 characters'
+        } else {
+          fieldErrors[field] = issue.message
+        }
+      })
+      
       return res.status(400).json({
-        message: 'Validation error',
-        errors: error.issues
+        success: false,
+        message: 'Please fix the errors below',
+        type: 'validation_error',
+        errors: fieldErrors
       })
     }
 
     console.error('Registration error:', error)
-    res.status(500).json({ message: 'Internal server error' })
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred during registration. Please try again.',
+      type: 'server_error'
+    })
   }
 }
