@@ -231,13 +231,16 @@ export default function Home() {
               >
                 {slide.type === 'video' ? (
                   <video
+                    key={`video-${slide.id}`}
                     autoPlay
                     muted
                     loop
                     playsInline
+                    preload="metadata"
                     poster={slide.poster}
                     className="w-full h-full object-cover"
                     onError={(e) => console.error(`Video error: ${slide.src}`, e)}
+                    style={{ display: index === currentSlide ? 'block' : 'none' }}
                   >
                     <source src={slide.src} type="video/mp4" />
                     Your browser does not support the video tag.
