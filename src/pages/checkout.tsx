@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import Head from 'next/head'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import Image from 'next/image'
 import Layout from '@/components/Layout'
+import OptimizedImage from '@/components/OptimizedImage'
 import LoadingButton from '@/components/LoadingButton'
 import { useCart } from '@/contexts/CartContext'
 
@@ -38,6 +40,19 @@ interface CartSummary {
 }
 
 export default function CheckoutPage() {
+  return (
+    <>
+      <Head>
+        <title>Secure Checkout - Ziki Apparel</title>
+        <meta name="description" content="Complete your purchase at Ziki Apparel. Secure checkout with multiple payment options including card, Jazz Cash, and bank transfer." />
+        <meta name="robots" content="noindex" />
+      </Head>
+      <CheckoutPageContent />
+    </>
+  )
+}
+
+function CheckoutPageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { items, summary, loading, addToCart: addToCartContext, clearCart } = useCart()
@@ -94,12 +109,12 @@ export default function CheckoutPage() {
     const processProductParams = async () => {
       if (router.isReady && !itemsProcessed) {
         const { productId, productSlug, variantId, quantity } = router.query
-        
+
         if (productId && variantId && !loading) {
           // Guest "Buy Now" - add product to cart
           const qty = parseInt(quantity as string) || 1
           await addToCartContext(productId as string, variantId as string, qty, productSlug as string)
-          
+
           // Clear the query params
           router.replace('/checkout', undefined, { shallow: true })
           setItemsProcessed(true)
@@ -765,7 +780,7 @@ export default function CheckoutPage() {
                         <div className="space-y-3">
                           {items.map((item) => (
                             <div key={item.id} className="flex items-center space-x-3">
-                              <Image
+                              <OptimizedImage
                                 src={item.product?.images?.[0]?.url || '/placeholder.jpg'}
                                 alt={item.product?.name || 'Product'}
                                 width={60}
@@ -837,7 +852,7 @@ export default function CheckoutPage() {
                   <div className="space-y-3 mb-6">
                     {items.slice(0, 3).map((item) => (
                       <div key={item.id} className="flex items-center space-x-3">
-                        <Image
+                        <OptimizedImage
                           src={item.product?.images?.[0]?.url || '/placeholder.jpg'}
                           alt={item.product?.name || 'Product'}
                           width={40}

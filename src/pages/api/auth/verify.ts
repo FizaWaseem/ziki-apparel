@@ -68,10 +68,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
   } catch (error) {
     console.error('Auth verification error:', error)
+
+    // Log full error details
+    if (error instanceof Error) {
+      console.error('Error name:', error.name)
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+
+      if (error.message.includes('prepared statement')) {
+        console.error('❌ Database connection error - prepared statement conflict.')
+        console.error('   → Restart the dev server: Kill the terminal and run `yarn run dev` again')
+      }
+      if (error.message.includes('ECONNREFUSED')) {
+        console.error('❌ Database connection refused - Supabase may be down or DATABASE_URL is incorrect')
+      }
+      if (error.message.includes('permission denied')) {
+        console.error('❌ Database permission denied - check Supabase credentials')
+      }
+    }
+
     return res.status(500).json({
       success: false,
       message: 'An error occurred during authentication. Please try again.',
-      type: 'server_error'
+      type: 'server_error',
+      error: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : String(error) : undefined
     })
   }
 }

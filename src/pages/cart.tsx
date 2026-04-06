@@ -1,12 +1,27 @@
 import { useState, useEffect } from 'react'
+import Head from 'next/head'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import Image from 'next/image'
 import Layout from '@/components/Layout'
+import OptimizedImage from '@/components/OptimizedImage'
 import { useCart } from '@/contexts/CartContext'
 
 export default function CartPage() {
+  return (
+    <>
+      <Head>
+        <title>Shopping Cart - Ziki Apparel</title>
+        <meta name="description" content="Review your shopping cart at Ziki Apparel. View items, update quantities, and proceed to secure checkout." />
+        <meta name="robots" content="noindex" />
+      </Head>
+      <CartPageContent />
+    </>
+  )
+}
+
+function CartPageContent() {
   const { data: session } = useSession()
   const router = useRouter()
   const { items, summary, loading, updateQuantity, removeItem } = useCart()
@@ -17,7 +32,7 @@ export default function CartPage() {
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     setUpdatingItems(prev => new Set(prev).add(itemId))
-    
+
     try {
       const success = await updateQuantity(itemId, newQuantity)
       if (!success) {
@@ -37,7 +52,7 @@ export default function CartPage() {
 
   const handleRemoveItem = async (itemId: string) => {
     setUpdatingItems(prev => new Set(prev).add(itemId))
-    
+
     try {
       const success = await removeItem(itemId)
       if (!success) {
@@ -100,7 +115,7 @@ export default function CartPage() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
@@ -110,7 +125,7 @@ export default function CartPage() {
                   <div className="flex items-start space-x-4">
                     {/* Product Image */}
                     <div className="flex-shrink-0">
-                      <Image
+                      <OptimizedImage
                         src={item.product.images[0]?.url || '/placeholder.jpg'}
                         alt={item.product.name}
                         width={80}
@@ -172,7 +187,7 @@ export default function CartPage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal ({summary?.itemCount} items)</span>

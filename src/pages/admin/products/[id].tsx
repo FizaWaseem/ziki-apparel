@@ -77,7 +77,7 @@ export default function ProductForm() {
 
   useEffect(() => {
     fetchCategories();
-    
+
     const fetchProduct = async () => {
       try {
         const response = await fetch(`/api/admin/products/${id}`);
@@ -99,7 +99,7 @@ export default function ProductForm() {
         console.error('Error fetching product:', error);
       }
     };
-    
+
     if (isEditing) {
       fetchProduct();
     }
@@ -163,7 +163,7 @@ export default function ProductForm() {
 
     setImageUploading(true);
     setError('');
-    
+
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -182,7 +182,7 @@ export default function ProductForm() {
             alt: form.name || 'Product image',
             position: form.images.length,
           };
-          
+
           setForm(prev => ({
             ...prev,
             images: [...prev.images, newImage],
@@ -210,7 +210,7 @@ export default function ProductForm() {
 
     setImageUploading(true);
     setError('');
-    
+
     try {
       const formData = new FormData();
       formData.append('image', file);
@@ -258,11 +258,11 @@ export default function ProductForm() {
       });
 
       if (response.ok) {
-        const message = isEditing 
+        const message = isEditing
           ? `✓ Product "${form.name}" updated successfully!`
           : `✓ Product "${form.name}" created successfully!`;
         setSuccess(message);
-        
+
         // Redirect after 2 seconds
         setTimeout(() => {
           router.push('/admin/products');
@@ -395,22 +395,129 @@ export default function ProductForm() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Product description..."
               />
-              
+
+              {/* Formatting Help Section */}
+              <div className="mt-3 p-4 bg-blue-50 rounded-md border border-blue-200">
+                <div className="flex items-start justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-blue-900">📝 Formatting Guide</h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const descTextarea = document.querySelector('textarea[placeholder="Product description..."]') as HTMLTextAreaElement;
+                      if (descTextarea) {
+                        descTextarea.focus();
+                      }
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Focus field
+                  </button>
+                </div>
+
+                {/* Formatting Syntax Examples */}
+                <div className="space-y-2 text-sm text-blue-800 mb-4 bg-white p-2 rounded border border-blue-100">
+                  <div>
+                    <strong>Bold Text:</strong>
+                    <code className="bg-gray-100 mx-1 px-2 py-0.5 rounded text-xs">**bold text**</code>
+                    → <strong>bold text</strong>
+                  </div>
+                  <div>
+                    <strong>Ordered List:</strong>
+                    <code className="bg-gray-100 mx-1 px-2 py-0.5 rounded text-xs">1. Item 1</code>
+                    <br className="ml-16" />
+                    <code className="bg-gray-100 mx-1 px-2 py-0.5 rounded text-xs">2. Item 2</code>
+                  </div>
+                  <div>
+                    <strong>Bullet List:</strong>
+                    <code className="bg-gray-100 mx-1 px-2 py-0.5 rounded text-xs">• Item 1</code>
+                    <br className="ml-16" />
+                    <code className="bg-gray-100 mx-1 px-2 py-0.5 rounded text-xs">• Item 2</code>
+                  </div>
+                  <div>
+                    <strong>New Line:</strong>
+                    <code className="bg-gray-100 mx-1 px-2 py-0.5 rounded text-xs">Press Enter twice</code>
+                    → (Creates paragraph break)
+                  </div>
+                </div>
+
+                {/* Quick Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const textarea = document.querySelector('textarea[placeholder="Product description..."]') as HTMLTextAreaElement;
+                      if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const selectedText = textarea.value.substring(start, end);
+                        const beforeText = textarea.value.substring(0, start);
+                        const afterText = textarea.value.substring(end);
+                        const newText = selectedText ? `${beforeText}**${selectedText}**${afterText}` : `${beforeText}**bold text**${afterText}`;
+                        handleInputChange('description', newText);
+                        textarea.focus();
+                      }
+                    }}
+                    className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded"
+                  >
+                    <strong>Bold</strong> Selected Text
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const orderedList = `1. First item\n2. Second item\n3. Third item`;
+                      const currentDesc = form.description;
+                      const newDesc = currentDesc ? `${currentDesc}\n\n${orderedList}` : orderedList;
+                      handleInputChange('description', newDesc);
+                    }}
+                    className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded"
+                  >
+                    Insert Ordered List
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bulletList = `• Feature 1\n• Feature 2\n• Feature 3`;
+                      const currentDesc = form.description;
+                      const newDesc = currentDesc ? `${currentDesc}\n\n${bulletList}` : bulletList;
+                      handleInputChange('description', newDesc);
+                    }}
+                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded"
+                  >
+                    Insert Bullet List
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const careText = `**Care Instructions:**\n• Machine wash cold\n• Do not bleach\n• Lay flat to dry`;
+                      const currentDesc = form.description;
+                      const newDesc = currentDesc ? `${currentDesc}\n\n${careText}` : careText;
+                      handleInputChange('description', newDesc);
+                    }}
+                    className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded"
+                  >
+                    Add Care Instructions
+                  </button>
+                </div>
+              </div>
+
               {/* Available Colors Summary */}
               <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">
-                  Available Colors: 
+                  Available Colors:
                   <span className="text-xs text-gray-500 ml-1">
                     ({form.variants.filter(v => v.color && v.color.trim() !== '').length} colors defined out of {form.variants.length} variants)
                   </span>
                 </h4>
-                
+
                 {/* Debug Info */}
                 <div className="text-xs text-gray-600 mb-2">
                   <p>Total variants: {form.variants.length}</p>
                   <p>Variants with colors: {form.variants.filter(v => v.color && v.color.trim() !== '').map(v => `"${v.color}"`).join(', ') || 'None'}</p>
                 </div>
-                
+
                 {form.variants.filter(v => v.color && v.color.trim() !== '').length > 0 ? (
                   <>
                     <div className="flex flex-wrap gap-2 mb-3">
@@ -432,7 +539,7 @@ export default function ProductForm() {
                         );
                       })}
                     </div>
-                    
+
                     {/* Quick color description helper */}
                     <div className="flex gap-2">
                       <button
@@ -450,7 +557,7 @@ export default function ProductForm() {
                       >
                         Add Color Info to Description
                       </button>
-                      
+
                       <button
                         type="button"
                         onClick={() => {
@@ -482,7 +589,7 @@ export default function ProductForm() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Product Images
               </label>
-              
+
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
                 <div className="text-center">
                   <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
@@ -538,7 +645,7 @@ export default function ProductForm() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Size Chart Image
               </label>
-              
+
               <div className="space-y-4">
                 {/* Size Chart Preview */}
                 {form.sizeChartImage && (
@@ -661,7 +768,7 @@ export default function ProductForm() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           placeholder="S, M, L, XL or 30, 32, 34..."
                         />
-                        
+
                         {/* Size Options */}
                         <div className="space-y-2">
                           {/* Clothing Sizes */}
@@ -673,18 +780,17 @@ export default function ProductForm() {
                                   key={size}
                                   type="button"
                                   onClick={() => handleVariantChange(index, 'size', size)}
-                                  className={`px-2 py-1 text-xs border rounded transition-colors ${
-                                    variant.size === size 
-                                      ? 'bg-indigo-600 text-white border-indigo-600' 
+                                  className={`px-2 py-1 text-xs border rounded transition-colors ${variant.size === size
+                                      ? 'bg-indigo-600 text-white border-indigo-600'
                                       : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:text-indigo-600'
-                                  }`}
+                                    }`}
                                 >
                                   {size}
                                 </button>
                               ))}
                             </div>
                           </div>
-                          
+
                           {/* Numeric Sizes */}
                           <div>
                             <p className="text-xs text-gray-600 mb-1">Numeric Sizes:</p>
@@ -694,11 +800,10 @@ export default function ProductForm() {
                                   key={size}
                                   type="button"
                                   onClick={() => handleVariantChange(index, 'size', size)}
-                                  className={`px-2 py-1 text-xs border rounded transition-colors ${
-                                    variant.size === size 
-                                      ? 'bg-indigo-600 text-white border-indigo-600' 
+                                  className={`px-2 py-1 text-xs border rounded transition-colors ${variant.size === size
+                                      ? 'bg-indigo-600 text-white border-indigo-600'
                                       : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:text-indigo-600'
-                                  }`}
+                                    }`}
                                 >
                                   {size}
                                 </button>
@@ -719,7 +824,7 @@ export default function ProductForm() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           placeholder="Blue, Black, etc."
                         />
-                        
+
                         {/* Color Palette */}
                         <div className="grid grid-cols-5 gap-1 p-2 bg-white border border-gray-200 rounded-md">
                           {COLOR_PALETTE.map((color) => (
@@ -727,11 +832,10 @@ export default function ProductForm() {
                               key={color.name}
                               type="button"
                               onClick={() => handleVariantChange(index, 'color', color.name)}
-                              className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
-                                variant.color === color.name 
-                                  ? 'border-gray-900 ring-2 ring-indigo-500' 
+                              className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${variant.color === color.name
+                                  ? 'border-gray-900 ring-2 ring-indigo-500'
                                   : 'border-gray-300 hover:border-gray-400'
-                              }`}
+                                }`}
                               style={{ backgroundColor: color.value }}
                               title={color.name}
                             >
@@ -741,7 +845,7 @@ export default function ProductForm() {
                             </button>
                           ))}
                         </div>
-                        
+
                         {/* Selected Color Preview */}
                         {variant.color && (
                           <div className="flex items-center space-x-2 text-sm text-gray-600">

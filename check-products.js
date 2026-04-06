@@ -1,0 +1,45 @@
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
+
+async function checkProducts() {
+    try {
+        console.log('📦 Checking Products in Database...\n');
+
+        // Count by status
+        const allCount = await prisma.product.count();
+        const activeCount = await prisma.product.count({ where: { status: 'ACTIVE' } });
+        const draftCount = await prisma.product.count({ where: { status: 'DRAFT' } });
+
+        console.log(`✅ Total products: ${allCount}`);
+        console.log(`✅ Active products: ${activeCount}`);
+        console.log(`📝 Draft products: ${draftCount}\n`);
+
+        // Show first 5 products
+        const products = await prisma.product.findMany({
+            take: 5,
+            select: {
+                id: true,
+                name: true,
+                status: true,
+                price: true
+            }
+        });
+
+        if (products.length > 0) {
+            console.log('📋 Sample Products:');
+            products.forEach(p => {
+                console.log(`  - ${p.name} (${p.status}) - $${p.price}`);
+            });
+        } else {
+            console.log('❌ No products found!');
+        }
+
+        await prisma.$disconnect();
+    } catch (error) {
+        console.error('❌ Error:', error);
+        process.exit(1);
+    }
+}
+
+checkProducts();

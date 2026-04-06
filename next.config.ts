@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
   images: {
+    // Disable image optimization for uploaded files in production (Vercel limitation)
+    unoptimized: process.env.VERCEL ? true : false,
     remotePatterns: [
       {
         protocol: 'https',
@@ -11,13 +13,19 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      // Allow loading from localhost in development
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        pathname: '/uploads/**',
+      },
     ],
   },
-  
+
   // Security Headers
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     return [
       {
         source: '/:path*',
@@ -55,7 +63,7 @@ const nextConfig: NextConfig = {
           // Content Security Policy
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https:; font-src 'self'; connect-src 'self' https://api.stripe.com https://api.unsplash.com; frame-src 'self' https://js.stripe.com"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' https: data:; font-src 'self' https:; connect-src 'self' https://api.stripe.com https://api.unsplash.com https://cdn.jsdelivr.net; frame-src 'self' https://js.stripe.com"
           }
         ]
       }

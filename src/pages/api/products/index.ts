@@ -8,12 +8,12 @@ export default async function handler(
 ) {
   if (req.method === 'GET') {
     try {
-      const { 
-        page = '1', 
-        limit = '12', 
-        category, 
-        search, 
-        minPrice, 
+      const {
+        page = '1',
+        limit = '12',
+        category,
+        search,
+        minPrice,
         maxPrice,
         sort = 'createdAt',
         order = 'desc'
@@ -24,7 +24,7 @@ export default async function handler(
 
       // Build where clause with proper typing
       const searchConditions: Prisma.ProductWhereInput[] = []
-      
+
       if (category) {
         searchConditions.push({
           category: {
@@ -49,15 +49,15 @@ export default async function handler(
         searchConditions.push({ price: priceCondition })
       }
 
-      const finalWhere: Prisma.ProductWhereInput = searchConditions.length > 0 
-        ? { status: 'ACTIVE', AND: searchConditions }
-        : { status: 'ACTIVE' }
+      const finalWhere: Prisma.ProductWhereInput = searchConditions.length > 0
+        ? { AND: searchConditions }
+        : {}
 
       // Build orderBy clause
-      const orderBy = 
+      const orderBy =
         sort === 'price' ? { price: order as 'asc' | 'desc' } :
-        sort === 'name' ? { name: order as 'asc' | 'desc' } :
-        { createdAt: order as 'asc' | 'desc' }
+          sort === 'name' ? { name: order as 'asc' | 'desc' } :
+            { createdAt: order as 'asc' | 'desc' }
 
       const [products, totalCount] = await Promise.all([
         prisma.product.findMany({
