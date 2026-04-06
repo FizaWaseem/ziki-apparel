@@ -134,12 +134,13 @@ export default function Home() {
       if (Array.isArray(data) && data.length > 0) {
         // Take first 2 categories, or use defaults if less than 2
         const categoriesToShow = data.slice(0, 2)
-        if (categoriesToShow.length === 2) {
-          setCategories(categoriesToShow)
-        } else {
-          // Fallback: mix fetched with defaults
-          setCategories([categoriesToShow[0], DEFAULT_CATEGORIES[1]])
-        }
+        console.log('Fetched categories:', categoriesToShow)
+        // if (categoriesToShow.length === 2) {
+        setCategories(categoriesToShow)
+        // } else {
+        //   // Fallback: mix fetched with defaults
+        //   setCategories([categoriesToShow[0], DEFAULT_CATEGORIES[1]])
+        // }
       } else {
         setCategories(DEFAULT_CATEGORIES)
       }
@@ -453,23 +454,23 @@ export default function Home() {
             {categoriesLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {[...Array(2)].map((_, index) => (
-                  <div key={index} className="relative h-64 bg-gray-300 animate-pulse rounded-lg"></div>
+                  <div key={index} className="relative h-68 bg-gray-300 animate-pulse rounded-lg"></div>
                 ))}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {categories.map((category) => (
                   <Link key={category.id} href={`/products?category=${category.slug}`}>
-                    <div className="relative h-64 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
+                    <div className="relative h-99 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
                       <div
                         className="absolute inset-0 bg-cover bg-center transition-transform group-hover:scale-105"
                         style={{
-                          backgroundImage: category.image ? `url('${category.image}')` : 'url(https://images.unsplash.com/photo-1542272604-787c3835535d?w=800)'
+                          backgroundImage: category.image ? `url('${category.image}')` : "transparent"
                         }}
                       ></div>
-                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                      <div className="absolute inset-0  bg-opacity-40 flex items-center justify-center">
                         <div className="text-center text-white">
-                          <h3 className="text-2xl font-bold mb-2">{category.name}</h3>
+                          <h3 className="text-2xl font-bold mb-2">{category.name}23</h3>
                           {category._count?.products > 0 && (
                             <p className="text-lg">{category._count.products} products</p>
                           )}
