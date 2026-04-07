@@ -8,7 +8,7 @@ async function main() {
 
   // Create admin user
   const hashedPassword = await bcrypt.hash('admin123', 12)
-  
+
   const admin = await prisma.user.upsert({
     where: { email: 'admin@zikiapparel.com' },
     update: {},
@@ -181,10 +181,11 @@ async function main() {
 
   for (const productData of products) {
     const { images, variants, ...productInfo } = productData
-    
+
     const product = await prisma.product.create({
       data: {
         ...productInfo,
+        status: 'ACTIVE', // Explicitly set to ACTIVE so products show on storefront
         images: {
           create: images,
         },
@@ -194,12 +195,12 @@ async function main() {
       },
     })
 
-    console.log(`Created product: ${product.name}`)
+    console.log(`✅ Created product: ${product.name} (Status: ${product.status})`)
   }
 
   // Create sample customer
   const customerPassword = await bcrypt.hash('customer123', 12)
-  
+
   const customer = await prisma.user.create({
     data: {
       email: 'customer@example.com',
