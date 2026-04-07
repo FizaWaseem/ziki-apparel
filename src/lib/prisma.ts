@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
+declare const globalThis: {
+  prisma?: PrismaClient
 }
 
 // Validate DATABASE_URL before creating client
@@ -11,17 +11,30 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required')
 }
 
-export const prisma =
-  globalForPrisma.prisma ??
+/**
+ * Prisma Client Singleton Pattern
+ * 
+ * ⚠️ CRITICAL FOR PRODUCTION:
+ * - MUST cache the instance in PRODUCTION to prevent connection pool exhaustion
+ * - Each new PrismaClient instance in serverless creates new DB connections
+ * - Vercel limits concurrent connections; without caching all are exhausted
+ * - Development can use hot reload (acceptable), production MUST reuse instance
+ * 
+ * ✅ The condition MUST be: if (NODE_ENV === 'production') cache it
+ * ❌ If condition was !== 'production', it inverts logic and breaks production
+ */
+export const prisma: PrismaClient =
+  globalThis.prisma ||
   new PrismaClient({
     log:
       process.env.NODE_ENV === 'development'
-        ? ['error', 'warn']  // Reduced logging to error/warn only
+        ? ['error', 'warn']
         : ['error'],
   })
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+// ✅ CORRECT: Cache ONLY in production
+if (process.env.NODE_ENV === 'production') {
+  globalThis.prisma = prisma
 }
 
 // Test connection on startup

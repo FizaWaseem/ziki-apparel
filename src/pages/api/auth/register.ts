@@ -14,6 +14,21 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Add CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST,PUT')
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  )
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.status(200).end()
+    return
+  }
+
   // Rate limiting for registration attempts
   if (!rateLimitMiddleware(req, res, RATE_LIMITS.AUTH)) {
     return
@@ -24,14 +39,17 @@ export default async function handler(
   }
 
   try {
+    console.log('📌 Register API: Processing registration...')
     const { name, email, password } = registerSchema.parse(req.body)
 
     // Check if user already exists
+    console.log('🔍 Register API: Checking if user exists...')
     const existingUser = await prisma.user.findUnique({
       where: { email }
     })
 
     if (existingUser) {
+      console.log('⚠️ Register API: User already exists:', email)
       return res.status(400).json({
         success: false,
         message: 'This email is already registered. Please sign in or use a different email.',
@@ -41,9 +59,11 @@ export default async function handler(
     }
 
     // Hash password
+    console.log('🔐 Register API: Hashing password...')
     const hashedPassword = await bcrypt.hash(password, 12)
 
     // Create user
+    console.log('👤 Register API: Creating user...')
     const user = await prisma.user.create({
       data: {
         name,
@@ -58,6 +78,7 @@ export default async function handler(
       }
     })
 
+    console.log(`✅ Register API: User created successfully: ${user.email}`)
     res.status(201).json({
       success: true,
       message: 'Account created successfully! Please sign in.',
@@ -67,6 +88,7 @@ export default async function handler(
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.log('⚠️ Register API: Validation error:', error.issues)
       const fieldErrors: { [key: string]: string } = {}
       error.issues.forEach(issue => {
         const field = issue.path[0] as string
@@ -89,11 +111,15 @@ export default async function handler(
       })
     }
 
-    console.error('Registration error:', error)
+    console.error('❌ Register API error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error details:', errorMessage)
+    
     res.status(500).json({
       success: false,
       message: 'An error occurred during registration. Please try again.',
-      type: 'server_error'
+      type: 'server_error',
+      error: process.env.NODE_ENV === 'development' ? errorMessage : undefined
     })
   }
 }
