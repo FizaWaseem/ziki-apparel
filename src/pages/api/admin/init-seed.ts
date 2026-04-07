@@ -225,41 +225,64 @@ export default async function handler(
         ]
 
         let createdCount = 0
+        const errors: string[] = []
+
         for (const productData of products) {
-            const { images, variants, ...productInfo } = productData
+            try {
+                const { images, variants, ...productInfo } = productData
 
-            const product = await prisma.product.create({
-                data: {
-                    ...productInfo,
-                    images: {
-                        create: images,
+                const product = await prisma.product.create({
+                    data: {
+                        ...productInfo,
+                        images: {
+                            create: images,
+                        },
+                        variants: {
+                            create: variants,
+                        },
                     },
-                    variants: {
-                        create: variants,
-                    },
-                },
-            })
+                })
 
-            createdCount++
-            console.log(`✅ Created product ${createdCount}/${products.length}: ${product.name}`)
+                createdCount++
+                console.log(`✅ Created product ${createdCount}/${products.length}: ${product.name}`)
+            } catch (productError) {
+                const errorMsg = productError instanceof Error ? productError.message : 'Unknown error'
+                console.error(`❌ Failed to create product:`, errorMsg)
+                errors.push(`${productData.name}: ${errorMsg}`)
+            }
         }
 
-        console.log('✅ Database seeding completed successfully!')
+        console.log(`✅ Database seeding completed! Created ${createdCount}/${products.length} products`)
+        if (errors.length > 0) {
+            console.warn(`⚠️ Errors during seeding:`, errors)
+        }
 
         return res.status(200).json({
-            message: 'Database initialized successfully',
+            message: createdCount === products.length
+                ? 'Database initialized successfully'
+                : `Database partially initialized (${createdCount}/${products.length} products created)`,
             stats: {
                 adminCreated: true,
                 categoriesCreated: 2,
                 productsCreated: createdCount,
+                errors: errors.length > 0 ? errors : undefined
             }
         })
 
     } catch (error) {
         console.error('❌ Seeding error:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        const errorStack = error instanceof Error ? error.stack : ''
+
+        console.error('Error details:', {
+            message: errorMessage,
+            stack: errorStack
+        })
+
         return res.status(500).json({
             message: 'Seeding failed',
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? errorStack : undefined
         })
     }
 }
