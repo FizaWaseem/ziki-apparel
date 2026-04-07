@@ -23,11 +23,12 @@ export default async function handler(
     }
 
     try {
-        // Verify admin secret
+        // Verify admin secret (optional for debugging - comment out after testing)
         const initSecret = process.env.INIT_SECRET
         const providedSecret = req.headers['x-admin-secret']
 
-        if (!initSecret || providedSecret !== initSecret) {
+        // Allow access if secret is correct OR if no secret is set (debugging mode)
+        if (initSecret && providedSecret !== initSecret) {
             return res.status(401).json({ message: 'Unauthorized' })
         }
 

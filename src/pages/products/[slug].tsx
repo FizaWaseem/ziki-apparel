@@ -613,456 +613,55 @@ export default function ProductDetailPage() {
             </div>
           </div>
         )}
+        {/* Reviews Section */}
+        < div className="mt-12" >
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            Customer Reviews ({product._count.reviews})
+          </h2>
+
+          {
+            product.reviews.length > 0 ? (
+              <div className="space-y-6">
+                {product.reviews.map(review => (
+                  <div key={review.id} className="bg-white p-6 rounded-lg shadow-sm border">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <div className="flex mr-2">
+                            {renderStars(review.rating)}
+                          </div>
+                          {review.verified && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                              Verified Purchase
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-semibold text-gray-900">
+                          {review.user.name || 'Anonymous'}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    {review.title && (
+                      <h4 className="font-semibold text-gray-900 mb-2">{review.title}</h4>
+                    )}
+                    {review.comment && (
+                      <p className="text-gray-700">{review.comment}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
+            )
+          }
+        </div >
 
         {/* Product Recommendations */}
         <ProductRecommendations currentProductId={product.id} />
       </Layout>
-      {/* LEFT: Scrolling Image Gallery (60%) */}
-      <div className="overflow-y-auto bg-white border-r border-[#E5E5E5]">
-        <div className="mb-4">
-          {product.images.length > 0 ? (
-            <div
-              className="relative h-[600px] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in group"
-              onMouseEnter={() => setIsZoomed(true)}
-              onMouseLeave={() => setIsZoomed(false)}
-              onMouseMove={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                setZoomPosition({ x, y });
-              }}
-              onClick={() => setShowFullscreen(true)}
-            >
-              <OptimizedImage
-                src={product.images[selectedImage].url}
-                alt={product.images[selectedImage].alt || product.name}
-                fill
-                priority
-                className={`object-contain transition-transform duration-300 ease-out ${isZoomed ? 'scale-150' : 'scale-100'
-                  }`}
-                style={{
-                  transformOrigin: isZoomed ? `${zoomPosition.x}% ${zoomPosition.y}%` : 'center center'
-                }}
-              />
-
-              {/* Zoom Indicator */}
-              {isZoomed && (
-                <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-                  🔍 Zoomed
-                </div>
-              )}
-
-              {/* Zoom Instructions */}
-              <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                Hover to zoom • Move to pan • Click for fullscreen
-              </div>
-            </div>
-          ) : (
-            <div className="h-[600px] bg-gray-200 rounded-lg flex items-center justify-center">
-              <span className="text-gray-400">No Image Available</span>
-            </div>
-          )}
-        </div>
-
-        {/* View Full Size Button */}
-        {product.images.length > 0 && (
-          <div className="mb-4 text-center">
-            <button
-              onClick={() => setShowFullscreen(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-              </svg>
-              <span>View Full Size</span>
-            </button>
-          </div>
-        )}
-
-        {/* Image Thumbnails */}
-        {product.images.length > 1 && (
-          <div className="flex space-x-3 overflow-x-auto pb-2">
-            {product.images.map((image, index) => (
-              <button
-                key={image.id}
-                onClick={() => setSelectedImage(index)}
-                className={`flex-shrink-0 w-24 h-24 rounded-md overflow-hidden border-2 transition-all duration-200 hover:scale-105 ${selectedImage === index ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'
-                  }`}
-              >
-                <OptimizedImage
-                  src={image.url}
-                  alt={image.alt || `${product.name} ${index + 1}`}
-                  width={96}
-                  height={96}
-                  className="object-contain w-full h-full transition-transform duration-200 hover:scale-110 bg-white"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Product Info - Right Sticky Panel */}
-      <div className="sticky top-0 h-screen overflow-y-auto bg-white px-6 py-8 space-y-4" style={{ fontSize: '11px' }}>
-        {/* Product Name - Uppercase */}
-        <h1 className="text-xl font-bold text-gray-900 uppercase tracking-widest" style={{ fontFamily: "'Montserrat', sans-serif", letterSpacing: '0.05em' }}>
-          {product.name}
-        </h1>
-
-        {/* Price in PKR */}
-        <div className="text-lg font-bold text-gray-900">
-          {formatPrice(currentPrice)}
-        </div>
-        {product.comparePrice && (
-          <div className="text-sm text-gray-500 line-through">
-            {formatPrice(product.comparePrice)}
-          </div>
-        )}
-
-        {/* Product Description */}
-        {product.description && (
-          <FormattedDescription
-            text={product.description}
-            className="text-sm"
-          />
-        )}
-
-        {/* Horizontal Line */}
-        <div className="border-t border-[#E5E5E5] my-3"></div>
-
-        {/* Product SKU/Number */}
-        {product.sku && (
-          <div className="text-gray-600">
-            <span className="font-semibold">SKU:</span> {product.sku}
-          </div>
-        )}
-
-        {/* Size Selection */}
-        {product.variants.length > 0 && (
-          <div>
-            {selectedColor && (() => {
-              const sizesForColor = product.variants.filter(v => v.color === selectedColor);
-              return sizesForColor.length > 0 ? (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2 uppercase tracking-wide">Size</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {sizesForColor.map(variant => (
-                      <button
-                        key={variant.id}
-                        onClick={() => setSelectedVariant(variant)}
-                        disabled={variant.stock === 0}
-                        className={`px-3 py-1 border rounded text-xs transition-all ${selectedVariant?.id === variant.id
-                          ? 'border-black bg-black text-white'
-                          : variant.stock === 0
-                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'border-gray-300 hover:border-black'
-                          }`}
-                      >
-                        {variant.size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null;
-            })()}
-          </div>
-        )}
-
-        {/* Color Selection */}
-        {product.variants.length > 0 && (
-          <div>
-            {(() => {
-              const uniqueColors = Array.from(new Set(product.variants.filter(v => v.color).map(v => v.color)));
-              return uniqueColors.length > 0 ? (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2 uppercase tracking-wide">Color</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {uniqueColors.map(color => {
-                      const colorData = COLOR_PALETTE.find(c => c.name === color);
-                      const isSelected = selectedColor === color;
-                      const isAvailable = product.variants.some(v => v.color === color && v.stock > 0);
-
-                      return (
-                        <button
-                          key={color}
-                          onClick={() => {
-                            setSelectedColor(color);
-                            setSelectedVariant(null);
-                          }}
-                          disabled={!isAvailable}
-                          className={`px-3 py-1 rounded-full text-xs transition-all border ${isSelected
-                            ? 'border-black bg-black text-white'
-                            : isAvailable
-                              ? 'border-gray-300 bg-white text-gray-900 hover:border-black'
-                              : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                            }`}
-                        >
-                          {color}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null;
-            })()}
-          </div>
-        )}
-
-        {/* Size Chart Link */}
-        <div>
-          <a href="#sizechart" className="text-gray-600 underline hover:text-black text-xs">
-            Size Chart
-          </a>
-        </div>
-
-        {/* Quantity & Add to Cart - Inline */}
-        <div className="flex gap-2 items-center">
-          <div className="flex items-center border border-gray-300 rounded-full">
-            <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="px-3 py-1 hover:bg-gray-50 text-sm"
-            >
-              −
-            </button>
-            <span className="px-3 py-1 text-sm font-semibold">{quantity}</span>
-            <button
-              onClick={() => setQuantity(quantity + 1)}
-              className="px-3 py-1 hover:bg-gray-50 text-sm"
-              disabled={!!(selectedVariant && quantity >= selectedVariant.stock)}
-            >
-              +
-            </button>
-          </div>
-          <button
-            onClick={addToCart}
-            disabled={
-              addingToCart ||
-              !selectedVariant ||
-              selectedVariant.stock === 0 ||
-              quantity > selectedVariant.stock
-            }
-            className="flex-1 px-4 py-3 border border-gray-900 text-gray-900 font-medium text-sm rounded-full hover:bg-gray-50 transition-colors disabled:border-gray-400 disabled:text-gray-400 disabled:cursor-not-allowed"
-          >
-            {addingToCart ? 'Adding...' : 'Add to Cart'}
-          </button>
-        </div>
-
-        {/* Buy Now Button */}
-        <button
-          onClick={() => {
-            if (selectedVariant) {
-              // For authenticated users, add to cart then checkout
-              if (session?.user?.id) {
-                setAddingToCart(true)
-                addToCartContext(product.id, selectedVariant.id, quantity, product.slug).then(success => {
-                  if (success) {
-                    router.push('/checkout')
-                  } else {
-                    setToast({ message: 'Error adding to cart', type: 'error' })
-                    setAddingToCart(false)
-                  }
-                }).catch(error => {
-                  console.error('Error adding to cart:', error)
-                  setToast({ message: 'Error adding to cart', type: 'error' })
-                  setAddingToCart(false)
-                })
-              } else {
-                // For guests, go directly to checkout
-                // Pass product info via router state
-                router.push({
-                  pathname: '/checkout',
-                  query: {
-                    productSlug: product.slug,
-                    productId: product.id,
-                    variantId: selectedVariant.id,
-                    quantity: quantity
-                  }
-                })
-              }
-            }
-          }}
-          disabled={!selectedVariant || selectedVariant.stock === 0 || addingToCart}
-          className="w-full px-4 py-3 bg-gray-900 text-white font-medium text-sm rounded-full hover:bg-black transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {addingToCart ? 'Adding to cart...' : 'Buy Now'}
-        </button>
-
-        {/* Color Variation Disclaimer */}
-        <div className="border-t border-[#E5E5E5] pt-3 mt-4 text-gray-500 leading-relaxed">
-          Actual colour of the product may vary slightly due to photographic lighting sources or your device.
-        </div>
-
-        {/* CARE Section */}
-        <div className="border-t border-[#E5E5E5] pt-3">
-          <h3 className="font-semibold text-gray-900 mb-2 uppercase tracking-wide">Care</h3>
-          <ul className="space-y-1 text-gray-700 list-disc list-inside">
-            <li>Machine or handwash upto 30°C/86F</li>
-            <li>Gentle cycle</li>
-            <li>Do not dry in direct sunlight</li>
-            <li>Do not bleach</li>
-            <li>Do not iron directly on prints/embroidery</li>
-          </ul>
-        </div>
-
-        {/* Size Chart Section */}
-        {product.sizeChartImage && (
-          <div className="border-t border-[#E5E5E5] pt-3">
-            <h3 id="sizechart" className="font-semibold text-gray-900 mb-3 uppercase tracking-wide">
-              Size Chart
-            </h3>
-            <div className="relative w-full bg-gray-50 rounded-lg overflow-hidden">
-              <Image
-                src={product.sizeChartImage}
-                alt="Size Chart"
-                width={400}
-                height={400}
-                className="w-full h-auto object-contain"
-                priority={false}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-
-      {/* Reviews Section */}
-      < div className="mt-12" >
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Customer Reviews ({product._count.reviews})
-        </h2>
-
-        {
-          product.reviews.length > 0 ? (
-            <div className="space-y-6">
-              {product.reviews.map(review => (
-                <div key={review.id} className="bg-white p-6 rounded-lg shadow-sm border">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <div className="flex mr-2">
-                          {renderStars(review.rating)}
-                        </div>
-                        {review.verified && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                            Verified Purchase
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-semibold text-gray-900">
-                        {review.user.name || 'Anonymous'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(review.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  {review.title && (
-                    <h4 className="font-semibold text-gray-900 mb-2">{review.title}</h4>
-                  )}
-                  {review.comment && (
-                    <p className="text-gray-700">{review.comment}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
-          )
-        }
-      </div >
-
-      {/* Fullscreen Image Modal */}
-      {
-        showFullscreen && product.images.length > 0 && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowFullscreen(false)}
-          >
-            <div className="relative max-w-7xl max-h-full">
-              {/* Close Button */}
-              <button
-                onClick={() => setShowFullscreen(false)}
-                className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-
-              {/* Navigation Arrows */}
-              {product.images.length > 1 && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedImage(selectedImage > 0 ? selectedImage - 1 : product.images.length - 1);
-                    }}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedImage(selectedImage < product.images.length - 1 ? selectedImage + 1 : 0);
-                    }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </>
-              )}
-
-              {/* Main Image */}
-              <div className="relative max-w-full max-h-full flex items-center justify-center">
-                <Image
-                  src={product.images[selectedImage].url}
-                  alt={product.images[selectedImage].alt || product.name}
-                  width={0}
-                  height={0}
-                  sizes="100vw"
-                  className="max-w-[95vw] max-h-[95vh] w-auto h-auto object-contain"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    width: 'auto',
-                    height: 'auto',
-                  }}
-                />
-              </div>
-
-              {/* Image Counter */}
-              {product.images.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
-                  {selectedImage + 1} / {product.images.length}
-                </div>
-              )}
-
-              {/* Instructions */}
-              <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
-                Full Size View • Click outside to close • Use arrows to navigate
-              </div>
-            </div>
-          </div>
-        )
-      }
-
-      {/* Product Recommendations */}
-      {
-        product && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-            <ProductRecommendations
-              currentProductId={product.id}
-              title="You might also like"
-              limit={4}
-            />
-          </div>
-        )
-      }
-
       {/* Toast Notification */}
       {
         toast && (
