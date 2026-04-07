@@ -16,7 +16,8 @@ export default async function handler(
         minPrice,
         maxPrice,
         sort = 'createdAt',
-        order = 'desc'
+        order = 'desc',
+        featured
       } = req.query
 
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string)
@@ -24,6 +25,11 @@ export default async function handler(
 
       // Build where clause with proper typing
       const searchConditions: Prisma.ProductWhereInput[] = []
+
+      // Add featured filter if specified
+      if (featured === 'true') {
+        searchConditions.push({ featured: true })
+      }
 
       if (category) {
         searchConditions.push({
@@ -50,8 +56,8 @@ export default async function handler(
       }
 
       const finalWhere: Prisma.ProductWhereInput = searchConditions.length > 0
-        ? { AND: searchConditions }
-        : {}
+        ? { AND: [...searchConditions, { status: 'ACTIVE' }] }
+        : { status: 'ACTIVE' }
 
       // Build orderBy clause
       const orderBy =
