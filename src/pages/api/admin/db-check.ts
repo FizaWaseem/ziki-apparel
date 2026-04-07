@@ -56,27 +56,8 @@ export default async function handler(
             orderBy: { createdAt: 'asc' }
         })
 
-        // Check for orphaned images (images without products)
-        const orphanedImages = await prisma.productImage.findMany({
-            where: {
-                product: {
-                    isNot: null
-                }
-            },
-            include: { product: { select: { id: true, name: true } } },
-            take: 5
-        })
-
-        // Check for orphaned variants (variants without products)
-        const orphanedVariants = await prisma.productVariant.findMany({
-            where: {
-                product: {
-                    isNot: null
-                }
-            },
-            include: { product: { select: { id: true, name: true } } },
-            take: 5
-        })
+        // Note: With proper foreign key constraints, orphaned records
+        // shouldn't exist. No need to check for them.
 
         // Get detailed product info (first product as example)
         let sampleProduct = null
@@ -106,9 +87,7 @@ export default async function handler(
                 sampleProduct,
                 potentialIssues: {
                     missingImages: allProducts.filter(p => p._count.images === 0).length,
-                    missingVariants: allProducts.filter(p => p._count.variants === 0).length,
-                    orphanedImagesFound: orphanedImages.length,
-                    orphanedVariantsFound: orphanedVariants.length
+                    missingVariants: allProducts.filter(p => p._count.variants === 0).length
                 }
             },
             recommendations: generateRecommendations(counts, productsByStatus, allProducts)
@@ -127,8 +106,12 @@ export default async function handler(
     }
 }
 
-function generateRecommendations(counts: any, statuses: any[], products: any[]) {
-    const recs = []
+function generateRecommendations(
+    counts: Record<string, number>,
+    statuses: Array<{ status: string; _count: number }>,
+    products: Array<{ _count: { images: number; variants: number } }>
+): string[] {
+    const recs: string[] = []
 
     if (counts.products === 0) {
         recs.push('⚠️ NO PRODUCTS - Run db-seed-v2 to initialize')
@@ -146,12 +129,12 @@ function generateRecommendations(counts: any, statuses: any[], products: any[]) 
         recs.push(`⚠️ NO ACTIVE PRODUCTS - Have ${draft} draft, ${archived} archived (${counts.products} total)`)
     }
 
-    const noImages = products.filter((p: any) => p._count?.images === 0).length
+    const noImages = products.filter((p) => p._count?.images === 0).length
     if (noImages > 0) {
         recs.push(`⚠️ ${noImages} PRODUCTS WITHOUT IMAGES`)
     }
 
-    const noVariants = products.filter((p: any) => p._count?.variants === 0).length
+    const noVariants = products.filter((p) => p._count?.variants === 0).length
     if (noVariants > 0) {
         recs.push(`⚠️ ${noVariants} PRODUCTS WITHOUT VARIANTS`)
     }

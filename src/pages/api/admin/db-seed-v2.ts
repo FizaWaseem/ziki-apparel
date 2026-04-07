@@ -74,7 +74,7 @@ export default async function handler(
             { name: "Women's Jeans", slug: 'womens-jeans', description: 'Stylish denim jeans for women' }
         ]
 
-        const categories: Record<string, any> = {}
+        const categories: Record<string, { id: string; name: string; slug: string }> = {}
         for (const cat of categoryData) {
             try {
                 categories[cat.slug] = await prisma.category.upsert({
