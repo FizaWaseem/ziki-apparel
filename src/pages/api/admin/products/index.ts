@@ -10,6 +10,7 @@ const createProductSchema = z.object({
   description: z.string().optional(),
   price: z.number().min(0, 'Price must be positive'),
   status: z.enum(['ACTIVE', 'INACTIVE', 'DRAFT', 'ARCHIVED']),
+  featured: z.boolean().optional(),
   categoryId: z.string().min(1, 'Category is required'),
   sizeChartImage: z.string().optional(),
   images: z.array(z.object({
@@ -68,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      const { name, slug, description, price, status, categoryId, sizeChartImage, images, variants } = validation.data;
+      const { name, slug, description, price, status, featured, categoryId, sizeChartImage, images, variants } = validation.data;
 
       // Check if slug is unique
       const existingProduct = await prisma.product.findUnique({
@@ -89,6 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             description: description || '',
             price,
             status,
+            featured: featured || false,
             categoryId,
             sizeChartImage: sizeChartImage || null,
           },

@@ -32,6 +32,7 @@ interface ProductForm {
   description: string;
   price: number;
   status: string;
+  featured: boolean;
   categoryId: string;
   sizeChartImage: string;
   images: Array<{
@@ -63,6 +64,7 @@ export default function ProductForm() {
     description: '',
     price: 0,
     status: 'DRAFT',
+    featured: false,
     categoryId: '',
     sizeChartImage: '',
     images: [],
@@ -88,6 +90,7 @@ export default function ProductForm() {
             slug: product.slug,
             description: product.description,
             price: product.price,
+            featured: product.featured || false,
             status: product.status,
             categoryId: product.categoryId,
             sizeChartImage: product.sizeChartImage || '',
@@ -127,7 +130,7 @@ export default function ProductForm() {
   };
 
   const handleInputChange = (
-    field: keyof ProductForm,
+    field: keyof ProductForm,boolean | 
     value: string | number | Array<{ url: string; alt: string; position: number }> | Array<{ size: string; color: string; stock: number; price: number }>
   ) => {
     setForm(prev => ({
@@ -381,6 +384,24 @@ export default function ProductForm() {
                   <option value="ARCHIVED">Archived</option>
                 </select>
               </div>
+            </div>
+
+            {/* Featured and Visibility Section */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.featured}
+                  onChange={(e) => handleInputChange('featured', e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm font-medium text-gray-900">
+                  ⭐ Featured Product
+                </span>
+              </label>
+              <p className="text-xs text-gray-600 mt-2 pl-7">
+                Featured products will appear on the home page. Make sure the product status is set to ACTIVE.
+              </p>
             </div>
 
             {/* Description */}
