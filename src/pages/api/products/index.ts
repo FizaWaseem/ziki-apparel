@@ -122,11 +122,15 @@ export default async function handler(
     } catch (error) {
       console.error('❌ Products API error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorStack = error instanceof Error ? error.stack : ''
       console.error('Error details:', errorMessage)
-      
-      res.status(500).json({ 
+      console.error('Stack:', errorStack)
+
+      // Return error details for debugging (remove after fixing)
+      res.status(500).json({
         message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        error: errorMessage,
+        stack: errorStack?.split('\n').slice(0, 3).join('\n')
       })
     }
   } else {
