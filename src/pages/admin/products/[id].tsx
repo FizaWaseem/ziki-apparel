@@ -130,8 +130,8 @@ export default function ProductForm() {
   };
 
   const handleInputChange = (
-    field: keyof ProductForm,boolean | 
-    value: string | number | Array<{ url: string; alt: string; position: number }> | Array<{ size: string; color: string; stock: number; price: number }>
+    field: keyof ProductForm,
+    value: string | number | boolean | Array<{ url: string; alt: string; position: number }> | Array<{ size: string; color: string; stock: number; price: number }>
   ) => {
     setForm(prev => ({
       ...prev,
