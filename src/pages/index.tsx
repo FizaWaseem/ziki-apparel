@@ -470,7 +470,7 @@ export default function Home() {
                       ></div>
                       <div className="absolute inset-0  bg-opacity-40 flex items-center justify-center">
                         <div className="text-center text-white">
-                          <h3 className="text-2xl font-bold mb-2">{category.name}23</h3>
+                          <h3 className="text-2xl font-bold mb-2">{category.name}</h3>
                           {category._count?.products > 0 && (
                             <p className="text-lg">{category._count.products} products</p>
                           )}

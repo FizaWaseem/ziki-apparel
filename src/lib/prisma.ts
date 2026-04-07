@@ -5,9 +5,15 @@ declare const globalThis: {
 }
 
 // Validate DATABASE_URL before creating client
-if (!process.env.DATABASE_URL) {
+const dbUrl = process.env.DATABASE_URL
+const directUrl = process.env.DIRECT_URL
+
+if (!dbUrl) {
   console.error('❌ DATABASE_URL environment variable is not set!')
-  console.error('Please set DATABASE_URL in your .env.local or Vercel environment variables.')
+  console.error(`Environment: ${process.env.NODE_ENV || 'unknown'}`)
+  console.error('Vercel: Check Project Settings → Environment Variables')
+  console.error('Local: Add DATABASE_URL to .env.local')
+  console.error('Supabase: Get connection string from Database Settings')
   throw new Error('DATABASE_URL is required')
 }
 
@@ -28,7 +34,7 @@ export const prisma: PrismaClient =
   new PrismaClient({
     log:
       process.env.NODE_ENV === 'development'
-        ? ['error', 'warn']
+        ? ['error', 'warn', 'query']
         : ['error'],
   })
 
@@ -41,9 +47,16 @@ if (process.env.NODE_ENV === 'production') {
 prisma.$connect()
   .then(() => {
     console.log('✅ Database connection established')
+    console.log(`📍 Connected to: ${dbUrl.split('@')[1]?.split(':')[0] || 'Supabase'}`)
+    console.log(`🔒 Using: ${process.env.NODE_ENV === 'production' ? 'CONNECTION POOLER' : 'DIRECT CONNECTION'}`)
   })
   .catch((err) => {
     console.error('❌ Failed to connect to database:', err.message)
+    console.error('🔍 Troubleshooting:')
+    console.error('1. Check DATABASE_URL environment variable is set')
+    console.error('2. Verify Supabase credentials are correct')
+    console.error('3. Ensure firewall allows connection to aws-1-ap-southeast-1.pooler.supabase.com:6543')
+    console.error('4. Check Supabase project is running (not paused)')
   })
 
 // Handle graceful shutdown
