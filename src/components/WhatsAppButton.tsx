@@ -1,7 +1,7 @@
 import Image from 'next/image'
 
 export default function WhatsAppButton() {
-  const whatsappNumber = '923220606399' // International format: +92 for Pakistan, remove leading 0
+  const whatsappNumber = '923060622399' // International format: +92 for Pakistan, remove leading 0
   const whatsappLink = `https://wa.me/${whatsappNumber}`
 
   return (
