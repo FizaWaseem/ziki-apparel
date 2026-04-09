@@ -82,19 +82,30 @@ export default async function handler(
             { createdAt: order as 'asc' | 'desc' }
 
       console.log('📊 Products API: Fetching products...')
+
+      // Simplified query - avoid timeout issues
       const [products, totalCount] = await Promise.all([
         prisma.product.findMany({
           where: finalWhere,
-          include: {
-            category: true,
-            images: {
-              orderBy: { position: 'asc' }
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            price: true,
+            comparePrice: true,
+            featured: true,
+            status: true,
+            category: {
+              select: { id: true, name: true, slug: true }
             },
-            variants: {
-              orderBy: { size: 'asc' }
+            images: {
+              select: { id: true, url: true, alt: true, position: true },
+              orderBy: { position: 'asc' },
+              take: 2 // Only get first 2 images for list view
             },
             _count: {
-              select: { reviews: true }
+              select: { reviews: true, variants: true }
             }
           },
           orderBy,
@@ -108,7 +119,7 @@ export default async function handler(
 
       console.log(`✅ Products API: Successfully fetched ${products.length} products (${totalCount} total, page ${page}/${totalPages})`)
       res.status(200).json({
-        products,
+        data: products,
         pagination: {
           page: parseInt(page as string),
           limit: take,
