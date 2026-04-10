@@ -6,6 +6,8 @@ import Image from 'next/image'
 import Layout from '@/components/Layout'
 import OptimizedImage from '@/components/OptimizedImage'
 import SearchWithAutocomplete from '@/components/SearchWithAutocomplete'
+import { apiFetchWithCache } from '@/lib/apiCache'
+import { DataSourceBadge } from '@/components/OfflineIndicator'
 
 interface ProductImage {
   id: string
@@ -62,6 +64,8 @@ export default function ProductsPage() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [isCached, setIsCached] = useState(false)
   const [showFilterDrawer, setShowFilterDrawer] = useState(false)
   const [filters, setFilters] = useState({
     search: '',
@@ -94,38 +98,63 @@ export default function ProductsPage() {
     fetchCategories()
   }, [])
 
-  useEffect(() => {
-    const fetchProductsData = async () => {
-      setLoading(true)
-      try {
-        const queryParams = new URLSearchParams()
+  const fetchProductsData = async (forceRefresh = false, isLoadingSet = true) => {
+    if (isLoadingSet) setLoading(true)
+    try {
+      const queryParams = new URLSearchParams()
 
-        Object.entries(router.query).forEach(([key, value]) => {
-          if (value && typeof value === 'string') {
-            queryParams.append(key, value)
-          }
-        })
+      Object.entries(router.query).forEach(([key, value]) => {
+        if (value && typeof value === 'string') {
+          queryParams.append(key, value)
+        }
+      })
 
-        const response = await fetch(`/api/products?${queryParams.toString()}`)
-        const data: ProductsResponse = await response.json()
+      const url = `/api/products?${queryParams.toString()}`
+      const cacheKey = `products-${queryParams.toString()}`
 
-        setProducts(data.products)
-        setPagination(data.pagination)
-      } catch (error) {
-        console.error('Error fetching products:', error)
-      } finally {
-        setLoading(false)
-      }
+      const response = await apiFetchWithCache<ProductsResponse>(
+        url,
+        cacheKey,
+        {
+          cacheTtl: 12,
+          cacheNamespace: 'data',
+          forceRefresh,
+        }
+      )
+
+      setIsCached(response.isCached)
+      console.log('Fetched products:', { count: response.data?.products.length, isCached: response.isCached, forceRefresh })
+
+      setProducts(response.data?.products || [])
+      setPagination(response.data?.pagination || null)
+    } catch (error) {
+      console.error('Error fetching products:', error)
+    } finally {
+      if (isLoadingSet) setLoading(false)
+      setRefreshing(false)
     }
+  }
 
-    fetchProductsData()
+  useEffect(() => {
+    fetchProductsData(false)
   }, [router.query])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchProductsData(true, false)
+  }
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories')
-      const data = await response.json()
-      setCategories(data)
+      const response = await apiFetchWithCache<Category[]>(
+        '/api/categories',
+        'categories',
+        {
+          cacheTtl: 24,
+          cacheNamespace: 'data',
+        }
+      )
+      setCategories(response.data || [])
     } catch (error) {
       console.error('Error fetching categories:', error)
     }
@@ -214,9 +243,30 @@ export default function ProductsPage() {
               {/* Product Counter & Sort */}
               <div className="flex items-center gap-6">
                 {pagination && (
-                  <p className="text-xs text-gray-600 uppercase tracking-wide">
-                    Showing {products.length} of {pagination.totalCount} products
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide">
+                      Showing {products.length} of {pagination.totalCount} products
+                    </p>
+                    <DataSourceBadge isCached={isCached} />
+                    <button
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:bg-gray-300 disabled:text-gray-600 transition-colors"
+                      title="Refresh to get latest products"
+                    >
+                      {refreshing ? (
+                        <>
+                          <span className="animate-spin">⟳</span>
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>
+                          <span>↻</span>
+                          Refresh
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
 
                 {/* Sort Dropdown */}

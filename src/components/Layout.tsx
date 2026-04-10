@@ -6,6 +6,7 @@ import { useRouter } from 'next/router'
 import { useCart } from '@/contexts/CartContext'
 import SearchWithAutocomplete from './SearchWithAutocomplete'
 import WhatsAppButton from './WhatsAppButton'
+import { OfflineIndicator } from './OfflineIndicator'
 
 interface LayoutProps {
   children: ReactNode
@@ -28,6 +29,7 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <OfflineIndicator showDetails={true} />
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4">

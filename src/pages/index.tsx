@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Layout from '@/components/Layout'
 import OptimizedImage from '@/components/OptimizedImage'
+import { apiFetchWithCache } from '@/lib/apiCache'
+import { DataSourceBadge } from '@/components/OfflineIndicator'
 
 interface ProductImage {
   id: string
@@ -118,7 +120,13 @@ export default function Home() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [dataSources, setDataSources] = useState({
+    heroSlides: false as boolean,
+    featuredProducts: false as boolean,
+    categories: false as boolean,
+  })
 
   useEffect(() => {
     fetchHeroSlides()
@@ -126,21 +134,24 @@ export default function Home() {
     fetchCategories()
   }, [])
 
-  // Fetch categories from database
+  // Fetch categories from database with caching
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories')
-      const data = await response.json()
-      if (Array.isArray(data) && data.length > 0) {
-        // Take first 2 categories, or use defaults if less than 2
-        const categoriesToShow = data.slice(0, 2)
-        console.log('Fetched categories:', categoriesToShow)
-        // if (categoriesToShow.length === 2) {
+      const response = await apiFetchWithCache<Category[]>(
+        '/api/categories',
+        'categories',
+        {
+          cacheTtl: 24,
+          cacheNamespace: 'data',
+        }
+      )
+
+      setDataSources(prev => ({ ...prev, categories: response.isCached }))
+
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        const categoriesToShow = response.data.slice(0, 2)
+        console.log('Fetched categories:', categoriesToShow, { isCached: response.isCached })
         setCategories(categoriesToShow)
-        // } else {
-        //   // Fallback: mix fetched with defaults
-        //   setCategories([categoriesToShow[0], DEFAULT_CATEGORIES[1]])
-        // }
       } else {
         setCategories(DEFAULT_CATEGORIES)
       }
@@ -152,18 +163,26 @@ export default function Home() {
     }
   }
 
-  // Fetch hero slides from database
+  // Fetch hero slides from database with caching
   const fetchHeroSlides = async () => {
     try {
-      const response = await fetch('/api/hero')
-      const data = await response.json()
-      // Use fetched slides if available, otherwise use fallback
-      if (data.length > 0) {
-        setHeroSlides(data)
+      const response = await apiFetchWithCache<HeroSlide[]>(
+        '/api/hero',
+        'hero-slides',
+        {
+          cacheTtl: 12,
+          cacheNamespace: 'data',
+        }
+      )
+
+      setDataSources(prev => ({ ...prev, heroSlides: response.isCached }))
+
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        console.log('Fetched hero slides:', { count: response.data.length, isCached: response.isCached })
+        setHeroSlides(response.data)
       }
     } catch (error) {
       console.error('Error fetching hero slides:', error)
-      // Keep using fallback slides on error
     }
   }
 
@@ -175,15 +194,28 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [heroSlides.length])
 
-  const fetchFeaturedProducts = async () => {
+  const fetchFeaturedProducts = async (forceRefresh = false) => {
     try {
-      const response = await fetch('/api/products?featured=true&limit=6')
-      const data = await response.json()
-      setFeaturedProducts(data.products || [])
+      const response = await apiFetchWithCache<{ products: Product[] }>(
+        '/api/products?featured=true&limit=6',
+        'featured-products',
+        {
+          cacheTtl: 12,
+          cacheNamespace: 'data',
+          forceRefresh,
+        }
+      )
+
+      setDataSources(prev => ({ ...prev, featuredProducts: response.isCached }))
+
+      const products = response.data?.products || []
+      console.log('Fetched featured products:', { count: products.length, isCached: response.isCached, forceRefresh })
+      setFeaturedProducts(products)
     } catch (error) {
       console.error('Error fetching featured products:', error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -197,6 +229,51 @@ export default function Home() {
 
   const prevSlide = () => {
     setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      // Fetch all data with forceRefresh to hit API
+      const [productsResponse, heroResponse, categoriesResponse] = await Promise.all([
+        apiFetchWithCache<{ products: Product[] }>(
+          '/api/products?featured=true&limit=6',
+          'featured-products',
+          { cacheTtl: 12, cacheNamespace: 'data', forceRefresh: true }
+        ),
+        apiFetchWithCache<HeroSlide[]>(
+          '/api/hero',
+          'hero-slides',
+          { cacheTtl: 12, cacheNamespace: 'data', forceRefresh: true }
+        ),
+        apiFetchWithCache<Category[]>(
+          '/api/categories',
+          'categories',
+          { cacheTtl: 24, cacheNamespace: 'data', forceRefresh: true }
+        ),
+      ])
+
+      if (productsResponse.data?.products) {
+        setFeaturedProducts(productsResponse.data.products)
+        setDataSources(prev => ({ ...prev, featuredProducts: productsResponse.isCached }))
+      }
+
+      if (Array.isArray(heroResponse.data) && heroResponse.data.length > 0) {
+        setHeroSlides(heroResponse.data)
+        setDataSources(prev => ({ ...prev, heroSlides: heroResponse.isCached }))
+      }
+
+      if (Array.isArray(categoriesResponse.data) && categoriesResponse.data.length > 0) {
+        setCategories(categoriesResponse.data.slice(0, 2))
+        setDataSources(prev => ({ ...prev, categories: categoriesResponse.isCached }))
+      }
+
+      console.log('✓ Data refreshed successfully')
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const formatPrice = (price: number) => {
@@ -360,9 +437,30 @@ export default function Home() {
         <section className="py-16 bg-white">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Featured Products
-              </h2>
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+                  Featured Products
+                </h2>
+                <DataSourceBadge isCached={dataSources.featuredProducts} />
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full hover:bg-blue-200 disabled:bg-gray-300 disabled:text-gray-600 transition-colors"
+                  title="Refresh to get latest products from server"
+                >
+                  {refreshing ? (
+                    <>
+                      <span className="animate-spin">⟳</span>
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <span>↻</span>
+                      Refresh
+                    </>
+                  )}
+                </button>
+              </div>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Explore our most popular denim pieces, loved by customers worldwide
               </p>
