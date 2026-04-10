@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,6 +27,19 @@ export default async function handler(
 
   try {
     console.log('📌 Hero API: Fetching slides from database...')
+
+    // Verify database connection
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      console.log('✅ DB Connection OK')
+    } catch (connErr) {
+      console.error('❌ DB Connection Failed:', connErr)
+      return res.status(503).json({
+        message: 'Database unavailable',
+        error: 'Connection failed'
+      })
+    }
+
     // Fetch only active hero slides, ordered by position
     const heroSlides = await prisma.heroSlide.findMany({
       where: { active: true },
@@ -38,9 +52,25 @@ export default async function handler(
   } catch (error) {
     console.error('❌ Error fetching hero slides:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : ''
     console.error('Error details:', errorMessage)
-    // Return empty array on error instead of error response
-    // This prevents homepage from breaking
-    res.status(200).json([])
+    console.error('Stack:', errorStack)
+
+    // Check error type
+    let statusCode = 500
+    if (error instanceof Prisma.PrismaClientRustPanicError) {
+      statusCode = 503
+      console.error('🚨 Prisma Rust Panic - likely database issue')
+    } else if (error instanceof Prisma.PrismaClientValidationError) {
+      statusCode = 400
+      console.error('🚨 Validation error')
+    }
+
+    // Return error details instead of empty array to help diagnose
+    res.status(statusCode).json({
+      message: 'Internal server error',
+      error: errorMessage,
+      type: error?.constructor?.name || 'Unknown'
+    })
   }
 }

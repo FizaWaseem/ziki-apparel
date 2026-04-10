@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
@@ -98,7 +98,7 @@ export default function ProductsPage() {
     fetchCategories()
   }, [])
 
-  const fetchProductsData = async (forceRefresh = false, isLoadingSet = true) => {
+  const fetchProductsData = useCallback(async (forceRefresh = false, isLoadingSet = true) => {
     if (isLoadingSet) setLoading(true)
     try {
       const queryParams = new URLSearchParams()
@@ -133,7 +133,7 @@ export default function ProductsPage() {
       if (isLoadingSet) setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [router.query])
 
   useEffect(() => {
     fetchProductsData(false)

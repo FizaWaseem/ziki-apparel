@@ -23,7 +23,24 @@ export default async function handler(
 
   if (req.method === 'GET') {
     try {
-      console.log('📌 Products API: Processing request...')
+      console.log('📌 Products API: Processing request...', { 
+        featured: req.query.featured,
+        limit: req.query.limit,
+        env: process.env.NODE_ENV
+      })
+
+      // Verify database connection
+      try {
+        await prisma.$queryRaw`SELECT 1`
+        console.log('✅ DB Connection OK')
+      } catch (connErr) {
+        console.error('❌ DB Connection Failed:', connErr)
+        return res.status(503).json({
+          message: 'Database unavailable',
+          error: 'Connection failed'
+        })
+      }
+
       const {
         page = '1',
         limit = '12',
@@ -44,10 +61,12 @@ export default async function handler(
 
       // Add featured filter if specified
       if (featured === 'true') {
+        console.log('🔍 Filtering for featured products')
         searchConditions.push({ featured: true })
       }
 
       if (category) {
+        console.log('🔍 Filtering by category:', category)
         searchConditions.push({
           category: {
             slug: category as string
@@ -74,6 +93,8 @@ export default async function handler(
       const finalWhere: Prisma.ProductWhereInput = searchConditions.length > 0
         ? { AND: [...searchConditions, { status: 'ACTIVE' }] }
         : { status: 'ACTIVE' }
+
+      console.log('📋 Query conditions:', JSON.stringify(finalWhere, null, 2))
 
       // Build orderBy clause
       const orderBy =
@@ -140,11 +161,21 @@ export default async function handler(
       console.error('Error details:', errorMessage)
       console.error('Stack:', errorStack)
 
-      // Return error details for debugging (remove after fixing)
-      res.status(500).json({
+      // Check error type
+      let statusCode = 500
+      if (error instanceof Prisma.PrismaClientRustPanicError) {
+        statusCode = 503
+        console.error('🚨 Prisma Rust Panic - likely database issue')
+      } else if (error instanceof Prisma.PrismaClientValidationError) {
+        statusCode = 400
+        console.error('🚨 Validation error')
+      }
+
+      // Return error details for debugging
+      res.status(statusCode).json({
         message: 'Internal server error',
         error: errorMessage,
-        stack: errorStack?.split('\n').slice(0, 3).join('\n')
+        type: error?.constructor?.name || 'Unknown'
       })
     }
   } else {

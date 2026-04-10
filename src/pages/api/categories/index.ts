@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export default async function handler(
   req: NextApiRequest,
@@ -23,6 +24,19 @@ export default async function handler(
   if (req.method === 'GET') {
     try {
       console.log('📌 Categories API: Fetching from database...')
+
+      // Verify database connection
+      try {
+        await prisma.$queryRaw`SELECT 1`
+        console.log('✅ DB Connection OK')
+      } catch (connErr) {
+        console.error('❌ DB Connection Failed:', connErr)
+        return res.status(503).json({
+          message: 'Database unavailable',
+          error: 'Connection failed'
+        })
+      }
+
       const categories = await prisma.category.findMany({
         include: {
           _count: {
@@ -48,11 +62,21 @@ export default async function handler(
       console.error('Error details:', errorMessage)
       console.error('Stack:', errorStack)
       
-      // Return error details for debugging (remove after fixing)
-      res.status(500).json({ 
+      // Check error type
+      let statusCode = 500
+      if (error instanceof Prisma.PrismaClientRustPanicError) {
+        statusCode = 503
+        console.error('🚨 Prisma Rust Panic - likely database issue')
+      } else if (error instanceof Prisma.PrismaClientValidationError) {
+        statusCode = 400
+        console.error('🚨 Validation error')
+      }
+
+      // Return error details for debugging
+      res.status(statusCode).json({
         message: 'Internal server error',
         error: errorMessage,
-        stack: errorStack?.split('\n').slice(0, 3).join('\n')
+        type: error?.constructor?.name || 'Unknown'
       })
     }
   } else {
