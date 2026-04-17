@@ -111,6 +111,7 @@ export default function ProductsPage() {
 
       const url = `/api/products?${queryParams.toString()}`
       const cacheKey = `products-${queryParams.toString()}`
+      console.log('Fetching products:', { url, cacheKey, forceRefresh })
 
       const response = await apiFetchWithCache<ProductsResponse>(
         url,
@@ -121,7 +122,7 @@ export default function ProductsPage() {
           forceRefresh,
         }
       )
-
+      console.log('Fetching products----------:', response.isCached);
       setIsCached(response.isCached)
       console.log('Fetched products:', { count: response.data?.products.length, isCached: response.isCached, forceRefresh })
 
