@@ -168,6 +168,9 @@ export default function ProductForm() {
     setError('');
 
     try {
+      let successCount = 0;
+      let uploadError = '';
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const formData = new FormData();
@@ -190,13 +193,21 @@ export default function ProductForm() {
             ...prev,
             images: [...prev.images, newImage],
           }));
+          successCount++;
+        } else {
+          const errorData = await response.json();
+          uploadError = errorData.message || `Error uploading ${file.name}`;
+          setError(`❌ ${uploadError}`);
         }
       }
-      setSuccess('✓ Image(s) uploaded successfully!');
-      setTimeout(() => setSuccess(''), 2000);
+
+      if (successCount > 0) {
+        setSuccess(`✓ ${successCount} image(s) uploaded successfully!`);
+        setTimeout(() => setSuccess(''), 2000);
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Error uploading images';
-      setError(errorMsg);
+      setError(`❌ ${errorMsg}`);
     } finally {
       setImageUploading(false);
     }
@@ -232,11 +243,12 @@ export default function ProductForm() {
         setSuccess('✓ Size chart uploaded successfully!');
         setTimeout(() => setSuccess(''), 2000);
       } else {
-        setError('Error uploading size chart');
+        const errorData = await response.json();
+        setError(`❌ ${errorData.message || 'Error uploading size chart'}`);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Error uploading size chart';
-      setError(errorMsg);
+      setError(`❌ ${errorMsg}`);
     } finally {
       setImageUploading(false);
     }
@@ -802,8 +814,8 @@ export default function ProductForm() {
                                   type="button"
                                   onClick={() => handleVariantChange(index, 'size', size)}
                                   className={`px-2 py-1 text-xs border rounded transition-colors ${variant.size === size
-                                      ? 'bg-indigo-600 text-white border-indigo-600'
-                                      : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:text-indigo-600'
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:text-indigo-600'
                                     }`}
                                 >
                                   {size}
@@ -822,8 +834,8 @@ export default function ProductForm() {
                                   type="button"
                                   onClick={() => handleVariantChange(index, 'size', size)}
                                   className={`px-2 py-1 text-xs border rounded transition-colors ${variant.size === size
-                                      ? 'bg-indigo-600 text-white border-indigo-600'
-                                      : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:text-indigo-600'
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:text-indigo-600'
                                     }`}
                                 >
                                   {size}
@@ -854,8 +866,8 @@ export default function ProductForm() {
                               type="button"
                               onClick={() => handleVariantChange(index, 'color', color.name)}
                               className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${variant.color === color.name
-                                  ? 'border-gray-900 ring-2 ring-indigo-500'
-                                  : 'border-gray-300 hover:border-gray-400'
+                                ? 'border-gray-900 ring-2 ring-indigo-500'
+                                : 'border-gray-300 hover:border-gray-400'
                                 }`}
                               style={{ backgroundColor: color.value }}
                               title={color.name}
