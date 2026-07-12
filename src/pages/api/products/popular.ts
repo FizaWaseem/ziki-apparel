@@ -9,12 +9,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { limit = '6' } = req.query
 
+    // FIXED: Use select instead of include for efficiency
     // Get popular products based on multiple factors
     const popularProducts = await prisma.product.findMany({
       where: {
         status: 'ACTIVE'
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        price: true,
+        comparePrice: true,
+        featured: true,
         category: {
           select: {
             id: true,
@@ -23,7 +31,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         },
         images: {
-          orderBy: { position: 'asc' },
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            position: true
+          },
+          orderBy: { position: 'asc' as const },
           take: 1
         },
         _count: {
@@ -36,47 +50,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       orderBy: [
         // Featured products first
-        { featured: 'desc' },
+        { featured: 'desc' as const },
         // Products with more reviews
-        { reviews: { _count: 'desc' } },
+        { reviews: { _count: 'desc' as const } },
         // Products with more orders
-        { orderItems: { _count: 'desc' } },
+        { orderItems: { _count: 'desc' as const } },
         // Recently created
-        { createdAt: 'desc' }
+        { createdAt: 'desc' as const }
       ],
       take: parseInt(limit as string)
-    }) as Array<
-      Awaited<ReturnType<typeof prisma.product.findMany>>[number] & {
-        _count: {
-          reviews: number;
-          orderItems: number;
-          cartItems: number;
+    })
+
+    // FIXED: Fetch all reviews in ONE query instead of N+1
+    const reviewData = await prisma.review.groupBy({
+      by: ['productId'],
+      where: {
+        productId: {
+          in: popularProducts.map(p => p.id)
         }
+      },
+      _avg: {
+        rating: true
       }
-    >
+    })
 
-    // Calculate average rating for each product
-    const productsWithRating = await Promise.all(
-      popularProducts.map(async (product) => {
-        const reviews = await prisma.review.findMany({
-          where: { productId: product.id },
-          select: { rating: true }
-        })
-
-        const avgRating = reviews.length > 0
-          ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-          : 0
-
-        return {
-          ...product,
-          avgRating: Math.round(avgRating * 10) / 10,
-          popularityScore:
-            product._count.reviews * 3 +
-            product._count.orderItems * 5 +
-            product._count.cartItems * 1
-        }
-      })
+    // Create a map for quick lookup
+    const ratingMap = new Map(
+      reviewData.map(r => [r.productId, r._avg.rating ?? 0])
     )
+
+    // Add ratings and popularity score
+    const productsWithRating = popularProducts.map((product) => {
+      const avgRating = ratingMap.get(product.id) ?? 0
+      
+      return {
+        ...product,
+        avgRating: Math.round(avgRating * 10) / 10,
+        popularityScore:
+          product._count.reviews * 3 +
+          product._count.orderItems * 5 +
+          product._count.cartItems * 1
+      }
+    })
 
     // Sort by popularity score
     const sortedProducts = productsWithRating.sort((a, b) => 

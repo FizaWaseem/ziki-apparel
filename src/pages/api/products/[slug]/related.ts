@@ -55,7 +55,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         ]
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        comparePrice: true,
+        featured: true,
         category: {
           select: {
             id: true,
@@ -64,7 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         },
         images: {
-          orderBy: { position: 'asc' },
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            position: true
+          },
+          orderBy: { position: 'asc' as const },
           take: 1
         },
         _count: {
@@ -72,14 +84,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       },
       orderBy: [
-        // Prioritize same category
-        { categoryId: currentProduct.categoryId ? 'asc' : 'desc' },
         // Then by featured status
-        { featured: 'desc' },
+        { featured: 'desc' as const },
         // Then by review count
-        { reviews: { _count: 'desc' } },
+        { reviews: { _count: 'desc' as const } },
         // Finally by creation date
-        { createdAt: 'desc' }
+        { createdAt: 'desc' as const }
       ],
       take: 8
     })
@@ -98,7 +108,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           ]
         },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
+          comparePrice: true,
+          featured: true,
           category: {
             select: {
               id: true,
@@ -107,7 +123,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           },
           images: {
-            orderBy: { position: 'asc' },
+            select: {
+              id: true,
+              url: true,
+              alt: true,
+              position: true
+            },
+            orderBy: { position: 'asc' as const },
             take: 1
           },
           _count: {
@@ -115,9 +137,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         },
         orderBy: [
-          { featured: 'desc' },
-          { reviews: { _count: 'desc' } },
-          { createdAt: 'desc' }
+          { featured: 'desc' as const },
+          { reviews: { _count: 'desc' as const } },
+          { createdAt: 'desc' as const }
         ],
         take: 8 - relatedProducts.length
       })

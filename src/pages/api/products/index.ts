@@ -104,46 +104,59 @@ export default async function handler(
 
       console.log('📊 Products API: Fetching products...')
 
-      // Simplified query - avoid timeout issues
-      const [products, totalCount] = await Promise.all([
-        prisma.product.findMany({
-          where: finalWhere,
-          include: {
-            category: {
-              select: { id: true, name: true, slug: true }
-            },
-            images: {
-              orderBy: { position: 'asc' },
-              take: 2  // Only get first 2 images for list view
-            },
-            _count: {
-              select: { reviews: true, variants: true }
+      // FIXED: Use sequential queries with select (more efficient than include)
+      // Get products first with minimal data
+      const products = await prisma.product.findMany({
+        where: finalWhere,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          price: true,
+          comparePrice: true,
+          featured: true,
+          status: true,
+          categoryId: false, // Don't include foreign key ID
+          category: {
+            select: { 
+              id: true, 
+              name: true, 
+              slug: true 
             }
           },
-          orderBy,
-          skip,
-          take,
-        }),
-        prisma.product.count({ where: finalWhere })
-      ])
+          images: {
+            select: {
+              id: true,
+              url: true,
+              alt: true,
+              position: true
+            },
+            orderBy: { position: 'asc' as const },
+            take: 2  // Only first 2 images for list view
+          },
+          _count: {
+            select: { 
+              reviews: true, 
+              variants: true 
+            }
+          }
+        },
+        orderBy,
+        skip,
+        take,
+      })
+
+      // Get total count separately (simpler query, won't timeout)
+      const totalCount = await prisma.product.count({ 
+        where: finalWhere 
+      })
 
       const totalPages = Math.ceil(totalCount / take)
 
       console.log(`✅ Products API: Successfully fetched ${products.length} products (${totalCount} total, page ${page}/${totalPages})`)
       res.status(200).json({
-        products: products.map(p => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          description: p.description,
-          price: p.price,
-          comparePrice: p.comparePrice,
-          featured: p.featured,
-          status: p.status,
-          category: p.category,
-          images: p.images,
-          _count: p._count
-        })),
+        products,
         pagination: {
           page: parseInt(page as string),
           limit: take,
