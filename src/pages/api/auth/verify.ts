@@ -17,6 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
   }
 
+  // Useful to detect missing production env configuration early
+  const databaseUrlPresent = !!process.env.DATABASE_URL || !!process.env.DIRECT_URL
+
+  if (!databaseUrlPresent) {
+    console.error('Auth verify: missing DATABASE_URL/DIRECT_URL')
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during authentication. Please try again.',
+      type: 'server_error',
+      debugCode: 'DB_URL_MISSING'
+    })
+  }
+
   try {
     // Check if user exists
     const user = await prisma.user.findUnique({
@@ -87,11 +100,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    const debugCode = (() => {
+      const msg = error instanceof Error ? error.message : String(error)
+      if (msg.includes('prepared statement')) return 'PRISMA_PREPARED_STATEMENT'
+      if (msg.includes('ECONNREFUSED')) return 'DB_CONNECTION_REFUSED'
+      if (msg.includes('permission denied')) return 'DB_PERMISSION_DENIED'
+      if (msg.includes('DATABASE_URL')) return 'DB_URL_INVALID'
+      return 'AUTH_VERIFY_EXCEPTION'
+    })()
+
     return res.status(500).json({
       success: false,
       message: 'An error occurred during authentication. Please try again.',
       type: 'server_error',
-      error: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : String(error) : undefined
+      debugCode,
+      error:
+        process.env.NODE_ENV === 'development'
+          ? error instanceof Error
+            ? error.message
+            : String(error)
+          : undefined
     })
   }
 }
