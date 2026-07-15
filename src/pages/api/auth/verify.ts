@@ -4,7 +4,12 @@ import bcrypt from 'bcryptjs'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' })
+    return res.status(405).json({
+      message: 'Method not allowed',
+      type: 'wrong_method',
+      debugCode: 'WRONG_METHOD',
+      receivedMethod: req.method
+    })
   }
 
   const { email, password } = req.body
