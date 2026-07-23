@@ -5,22 +5,22 @@ const bcrypt = require('bcryptjs')
 const connectionString = process.env.DATABASE_URL
 
 if (!connectionString) {
-  console.error('❌ DATABASE_URL not set')
-  process.exit(1)
+    console.error('❌ DATABASE_URL not set')
+    process.exit(1)
 }
 
 const client = new Client({
-  connectionString,
-  ssl: { rejectUnauthorized: false },
+    connectionString,
+    ssl: { rejectUnauthorized: false },
 })
 
 async function main() {
-  try {
-    await client.connect()
-    console.log('✅ Connected to database')
+    try {
+        await client.connect()
+        console.log('✅ Connected to database')
 
-    // Create tables
-    const createTablesSql = `
+        // Create tables
+        const createTablesSql = `
       CREATE TABLE IF NOT EXISTS "User" (
         id TEXT NOT NULL PRIMARY KEY,
         email TEXT NOT NULL UNIQUE,
@@ -191,33 +191,33 @@ async function main() {
       );
     `
 
-    for (const sql of createTablesSql.split(';').filter(s => s.trim())) {
-      if (sql.trim()) {
-        await client.query(sql.trim())
-      }
-    }
-    console.log('✅ Tables created')
+        for (const sql of createTablesSql.split(';').filter(s => s.trim())) {
+            if (sql.trim()) {
+                await client.query(sql.trim())
+            }
+        }
+        console.log('✅ Tables created')
 
-    // Create admin user
-    const email = 'admin@zikiapparel.com'
-    const password = 'admin123'
-    const hashedPassword = await bcrypt.hash(password, 12)
+        // Create admin user
+        const email = 'admin@zikiapparel.com'
+        const password = 'admin123'
+        const hashedPassword = await bcrypt.hash(password, 12)
 
-    await client.query(
-      `INSERT INTO "User" (id, email, password, role, name, "createdAt", "updatedAt") 
+        await client.query(
+            `INSERT INTO "User" (id, email, password, role, name, "createdAt", "updatedAt") 
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
        ON CONFLICT (email) DO UPDATE SET password = $3
       `,
-      ['admin-' + Date.now(), email, hashedPassword, 'ADMIN', 'Admin User']
-    )
+            ['admin-' + Date.now(), email, hashedPassword, 'ADMIN', 'Admin User']
+        )
 
-    console.log('✅ Admin user created:', email)
-  } catch (error) {
-    console.error('❌ Error:', error)
-    process.exit(1)
-  } finally {
-    await client.end()
-  }
+        console.log('✅ Admin user created:', email)
+    } catch (error) {
+        console.error('❌ Error:', error)
+        process.exit(1)
+    } finally {
+        await client.end()
+    }
 }
 
 main()
