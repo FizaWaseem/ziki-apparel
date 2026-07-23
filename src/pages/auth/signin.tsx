@@ -20,48 +20,57 @@ export default function SignIn() {
     setError('')
 
     try {
-      // First verify credentials to get specific error type
-      const verifyResponse = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      })
-
-      const verifyData = await verifyResponse.json()
-
-      if (!verifyResponse.ok) {
-        // Show specific error message
-        setError(verifyData.message || 'Authentication failed')
+      // Validate input
+      if (!email || !password) {
+        setError('Please enter both email and password')
         setLoading(false)
         return
       }
 
-      // If verification passed, proceed with NextAuth signin
+      // Use NextAuth signin directly (more reliable than verify endpoint)
       const result = await signIn('credentials', {
         email,
         password,
         redirect: false,
+        callbackUrl: '/admin',
       })
 
+      console.log('SignIn result:', { ok: result?.ok, error: result?.error })
+
       if (result?.error) {
-        setError('Unable to sign in. Please try again.')
-      } else {
-        // Get updated session to check role
-        const session = await getSession()
-        if (session?.user?.role === 'ADMIN') {
-          router.push('/admin')
+        // Handle specific error messages from NextAuth
+        if (result.error === 'CredentialsSignin') {
+          setError('Invalid email or password. Please try again.')
+        } else if (result.error === 'EmailNotFound') {
+          setError('No account found with this email. Please sign up first.')
         } else {
-          router.push('/')
+          setError(result.error || 'Failed to sign in. Please try again.')
         }
+        setLoading(false)
+        return
+      }
+
+      if (!result?.ok) {
+        setError('Failed to sign in. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // Get session to check role and redirect appropriately
+      const session = await getSession()
+      console.log('Session after signin:', { email: session?.user?.email, role: session?.user?.role })
+
+      if (session?.user?.role === 'ADMIN') {
+        router.push('/admin')
+      } else if (session?.user) {
+        router.push('/')
+      } else {
+        setError('Failed to create session. Please try again.')
       }
     } catch (error) {
       console.error('Sign in error:', error)
-      setError('Something went wrong. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+      setError(`Error: ${errorMessage}`)
     } finally {
       setLoading(false)
     }

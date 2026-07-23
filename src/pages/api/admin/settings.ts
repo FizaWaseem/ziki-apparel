@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions)
 
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session?.user || session.user.role !== 'ADMIN') {
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
@@ -54,9 +54,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       })
 
-      return res.status(200).json({ 
+      return res.status(200).json({
         message: 'Settings updated successfully',
-        user 
+        user
       })
     } catch (error) {
       console.error('Error updating admin settings:', error)

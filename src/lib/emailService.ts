@@ -35,6 +35,23 @@ interface BasicOrder {
   createdAt: Date;
 }
 
+// Validate email configuration
+const validateEmailConfig = () => {
+  const required = ['EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_USER', 'EMAIL_PASS'];
+  const missing = required.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    console.error('❌ Missing email configuration:', missing.join(', '));
+    console.error('📧 Email service will not work. Add these to your environment variables:');
+    console.error('   - EMAIL_HOST (e.g., smtp.gmail.com)');
+    console.error('   - EMAIL_PORT (e.g., 587)');
+    console.error('   - EMAIL_USER (your email)');
+    console.error('   - EMAIL_PASS (your password/app password)');
+    return false;
+  }
+  return true;
+};
+
 // Create reusable transporter object using the default SMTP transport
 const createTransporter = () => {
   return nodemailer.createTransport({
@@ -55,16 +72,30 @@ export const sendEmail = async (options: {
   html: string;
   from?: string;
 }) => {
-  const transporter = createTransporter();
+  // Validate configuration
+  if (!validateEmailConfig()) {
+    console.error(`❌ Cannot send email to ${options.to}: Email service not configured`);
+    throw new Error('Email service not configured. Check environment variables.');
+  }
 
-  const mailOptions = {
-    from: options.from || `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-  };
+  try {
+    const transporter = createTransporter();
 
-  await transporter.sendMail(mailOptions);
+    const mailOptions = {
+      from: options.from || `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+    };
+
+    console.log(`📤 Sending email to ${options.to} with subject: "${options.subject}"`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent successfully to ${options.to}. Message ID: ${info.messageId}`);
+    return info;
+  } catch (error) {
+    console.error(`❌ Failed to send email to ${options.to}:`, error);
+    throw error;
+  }
 };
 
 export const sendOrderConfirmationEmail = async (

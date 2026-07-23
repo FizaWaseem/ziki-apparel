@@ -109,7 +109,7 @@ export default function Layout({ children }: LayoutProps) {
                             >
                               My Orders
                             </Link>
-                            {session.user.role === 'admin' && (
+                            {session?.user && 'role' in session.user && session.user.role === 'admin' && (
                               <Link
                                 href="/admin/orders"
                                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

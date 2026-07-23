@@ -53,12 +53,12 @@ const AdminOrders = () => {
   useEffect(() => {
     if (status === 'loading') return;
 
-    if (!session) {
+    if (!session || !session.user) {
       router.push('/auth/signin');
       return;
     }
 
-    if (session.user.role !== 'ADMIN') {
+    if ('role' in session.user && session.user.role !== 'ADMIN') {
       router.push('/');
       return;
     }

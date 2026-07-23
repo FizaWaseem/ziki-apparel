@@ -23,7 +23,7 @@ export default async function handler(
 
   if (req.method === 'GET') {
     try {
-      console.log('📌 Products API: Processing request...', { 
+      console.log('📌 Products API: Processing request...', {
         featured: req.query.featured,
         limit: req.query.limit,
         env: process.env.NODE_ENV
@@ -77,8 +77,8 @@ export default async function handler(
       if (search) {
         searchConditions.push({
           OR: [
-            { name: { contains: search as string, mode: 'insensitive' as Prisma.QueryMode } },
-            { description: { contains: search as string, mode: 'insensitive' as Prisma.QueryMode } }
+            { name: { contains: search as string } },
+            { description: { contains: search as string } }
           ]
         })
       }
@@ -119,10 +119,10 @@ export default async function handler(
           status: true,
           categoryId: false, // Don't include foreign key ID
           category: {
-            select: { 
-              id: true, 
-              name: true, 
-              slug: true 
+            select: {
+              id: true,
+              name: true,
+              slug: true
             }
           },
           images: {
@@ -136,9 +136,9 @@ export default async function handler(
             take: 2  // Only first 2 images for list view
           },
           _count: {
-            select: { 
-              reviews: true, 
-              variants: true 
+            select: {
+              reviews: true,
+              variants: true
             }
           }
         },
@@ -148,8 +148,8 @@ export default async function handler(
       })
 
       // Get total count separately (simpler query, won't timeout)
-      const totalCount = await prisma.product.count({ 
-        where: finalWhere 
+      const totalCount = await prisma.product.count({
+        where: finalWhere
       })
 
       const totalPages = Math.ceil(totalCount / take)

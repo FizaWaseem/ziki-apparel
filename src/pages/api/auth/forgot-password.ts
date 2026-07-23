@@ -19,7 +19,7 @@ export default async function handler(
   try {
     const validation = forgotPasswordSchema.safeParse(req.body)
     if (!validation.success) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Invalid input',
         errors: validation.error.issues
       })
@@ -34,8 +34,8 @@ export default async function handler(
 
     // Always return success message for security (don't reveal if email exists)
     if (!user) {
-      return res.status(200).json({ 
-        message: 'If an account exists with this email, a password reset link has been sent.' 
+      return res.status(200).json({
+        message: 'If an account exists with this email, a password reset link has been sent.'
       })
     }
 
@@ -59,8 +59,9 @@ export default async function handler(
 
     // Send email with reset link
     const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${token}`
-    
+
     try {
+      console.log(`📧 Sending password reset email to ${email}...`);
       await sendEmail({
         to: email,
         subject: 'Reset Your Password - Ziki Apparel',
@@ -75,13 +76,15 @@ export default async function handler(
           <p>If you didn&apos;t request this, please ignore this email.</p>
         `
       })
+      console.log(`✅ Password reset email sent to ${email}`);
     } catch (emailError) {
-      console.error('Failed to send email:', emailError)
-      // Continue anyway - don't fail the API request
+      console.error(`❌ Failed to send password reset email to ${email}:`, emailError)
+      // In production, we might still return success for security
+      // but log the error for debugging
     }
 
-    return res.status(200).json({ 
-      message: 'If an account exists with this email, a password reset link has been sent.' 
+    return res.status(200).json({
+      message: 'If an account exists with this email, a password reset link has been sent.'
     })
   } catch (error) {
     console.error('Error in forgot password:', error)

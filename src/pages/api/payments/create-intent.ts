@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const session = await getServerSession(req, res, authOptions)
-    if (!session) {
+    if (!session?.user) {
       return res.status(401).json({ message: 'Unauthorized' })
     }
 
@@ -52,14 +52,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Create payment intent error:', error)
-    
+
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        message: 'Validation error', 
-        errors: error.issues 
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: error.issues
       })
     }
-    
+
     res.status(500).json({ message: 'Failed to create payment intent' })
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
@@ -23,13 +24,13 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }: Adm
 
   useEffect(() => {
     if (status === 'loading') return;
-    
-    if (!session) {
+
+    if (!session || !session.user) {
       router.push('/auth/signin');
       return;
     }
 
-    if (session.user.role !== 'ADMIN') {
+    if ((session.user as any).role !== 'ADMIN') {
       router.push('/');
       return;
     }
@@ -59,7 +60,7 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }: Adm
     );
   }
 
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !session.user || (session.user as any).role !== 'ADMIN') {
     return null;
   }
 
@@ -110,7 +111,7 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }: Adm
             <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
             <div className="ml-4 flex items-center md:ml-6">
               <div className="relative">
-                <span className="text-sm text-gray-700">Welcome, {session.user.name}</span>
+                <span className="text-sm text-gray-700">Welcome, {session?.user?.name}</span>
               </div>
               <Link
                 href="/"
@@ -147,11 +148,10 @@ function SidebarContent({ navigation }: { navigation: NavItem[] }) {
             <Link
               key={item.name}
               href={item.href}
-              className={`${
-                item.current
-                  ? 'bg-indigo-100 text-indigo-900'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+              className={`${item.current
+                ? 'bg-indigo-100 text-indigo-900'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
             >
               <span className="mr-3 text-lg">{item.icon}</span>
               {item.name}
