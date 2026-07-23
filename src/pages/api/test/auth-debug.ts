@@ -8,6 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+        console.log('[DEBUG] Raw body:', JSON.stringify(req.body))
         const { email, password } = req.body
 
         console.log(`[DEBUG] Auth test for email: ${email}`)
