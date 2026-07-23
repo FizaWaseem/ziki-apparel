@@ -110,13 +110,19 @@ export default function ProductForm() {
 
   const fetchCategories = async () => {
     try {
+      console.log('🔄 Fetching categories...')
       const response = await fetch('/api/categories');
+      console.log('📡 Categories response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Categories fetched:', data)
         setCategories(data);
+      } else {
+        console.error('❌ Failed to fetch categories:', response.statusText)
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('❌ Error fetching categories:', error);
     }
   };
 

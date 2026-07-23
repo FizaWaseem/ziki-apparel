@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const { Client } = require('pg')
-const bcrypt = require('bcryptjs')
+import { Client } from 'pg'
+import bcrypt from 'bcryptjs'
 
 const connectionString = process.env.DATABASE_URL
 
@@ -21,7 +21,7 @@ async function main() {
 
         // Create tables
         const createTablesSql = `
-      CREATE TABLE IF NOT EXISTS "User" (
+      CREATE TABLE IF NOT EXISTS users (
         id TEXT NOT NULL PRIMARY KEY,
         email TEXT NOT NULL UNIQUE,
         "emailVerified" TIMESTAMP,
@@ -33,12 +33,12 @@ async function main() {
         "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE TABLE IF NOT EXISTS "Account" (
+      CREATE TABLE IF NOT EXISTS accounts (
         id TEXT NOT NULL PRIMARY KEY,
-        "userId" TEXT NOT NULL,
+        user_id TEXT NOT NULL,
         type TEXT NOT NULL,
         provider TEXT NOT NULL,
-        "providerAccountId" TEXT NOT NULL,
+        provider_account_id TEXT NOT NULL,
         refresh_token TEXT,
         access_token TEXT,
         expires_at INTEGER,
@@ -46,26 +46,26 @@ async function main() {
         scope TEXT,
         id_token TEXT,
         session_state TEXT,
-        FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE,
-        UNIQUE(provider, "providerAccountId")
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(provider, provider_account_id)
       );
 
-      CREATE TABLE IF NOT EXISTS "Session" (
+      CREATE TABLE IF NOT EXISTS sessions (
         id TEXT NOT NULL PRIMARY KEY,
         "sessionToken" TEXT NOT NULL UNIQUE,
-        "userId" TEXT NOT NULL,
+        user_id TEXT NOT NULL,
         expires TIMESTAMP NOT NULL,
-        FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS "VerificationToken" (
+      CREATE TABLE IF NOT EXISTS verificationtokens (
         email TEXT NOT NULL,
         token TEXT NOT NULL,
         expires TIMESTAMP NOT NULL,
         PRIMARY KEY (email, token)
       );
 
-      CREATE TABLE IF NOT EXISTS "Category" (
+      CREATE TABLE IF NOT EXISTS categories (
         id TEXT NOT NULL PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
         slug TEXT NOT NULL UNIQUE,
@@ -75,79 +75,79 @@ async function main() {
         "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE TABLE IF NOT EXISTS "Product" (
+      CREATE TABLE IF NOT EXISTS products (
         id TEXT NOT NULL PRIMARY KEY,
         name TEXT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
         description TEXT,
         price DECIMAL(15,2) NOT NULL,
-        "categoryId" TEXT NOT NULL,
+        category_id TEXT NOT NULL,
         stock INTEGER NOT NULL DEFAULT 0,
         featured BOOLEAN NOT NULL DEFAULT FALSE,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("categoryId") REFERENCES "Category"(id) ON DELETE CASCADE
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS "ProductImage" (
+      CREATE TABLE IF NOT EXISTS product_images (
         id TEXT NOT NULL PRIMARY KEY,
-        "productId" TEXT NOT NULL,
+        product_id TEXT NOT NULL,
         url TEXT NOT NULL,
         "isMain" BOOLEAN NOT NULL DEFAULT FALSE,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("productId") REFERENCES "Product"(id) ON DELETE CASCADE
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS "ProductVariant" (
+      CREATE TABLE IF NOT EXISTS product_variants (
         id TEXT NOT NULL PRIMARY KEY,
-        "productId" TEXT NOT NULL,
+        product_id TEXT NOT NULL,
         size TEXT NOT NULL,
         color TEXT,
         stock INTEGER NOT NULL DEFAULT 0,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("productId") REFERENCES "Product"(id) ON DELETE CASCADE
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS "CartItem" (
+      CREATE TABLE IF NOT EXISTS cart_items (
         id TEXT NOT NULL PRIMARY KEY,
-        "userId" TEXT NOT NULL,
-        "productId" TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
         quantity INTEGER NOT NULL DEFAULT 1,
         size TEXT,
         color TEXT,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE,
-        FOREIGN KEY ("productId") REFERENCES "Product"(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS "Order" (
+      CREATE TABLE IF NOT EXISTS orders (
         id TEXT NOT NULL PRIMARY KEY,
-        "userId" TEXT,
+        user_id TEXT,
         status TEXT NOT NULL DEFAULT 'PENDING',
         "totalAmount" DECIMAL(15,2) NOT NULL,
         "shippingAddress" TEXT NOT NULL,
         "trackingNumber" TEXT,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES "User"(id)
+        FOREIGN KEY (user_id) REFERENCES users(id)
       );
 
-      CREATE TABLE IF NOT EXISTS "OrderItem" (
+      CREATE TABLE IF NOT EXISTS order_items (
         id TEXT NOT NULL PRIMARY KEY,
-        "orderId" TEXT NOT NULL,
-        "productId" TEXT NOT NULL,
+        order_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
         quantity INTEGER NOT NULL,
         price DECIMAL(15,2) NOT NULL,
         size TEXT,
         color TEXT,
-        FOREIGN KEY ("orderId") REFERENCES "Order"(id) ON DELETE CASCADE,
-        FOREIGN KEY ("productId") REFERENCES "Product"(id)
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id)
       );
 
-      CREATE TABLE IF NOT EXISTS "Address" (
+      CREATE TABLE IF NOT EXISTS addresses (
         id TEXT NOT NULL PRIMARY KEY,
-        "userId" TEXT NOT NULL,
+        user_id TEXT NOT NULL,
         "fullName" TEXT NOT NULL,
         phone TEXT NOT NULL,
         address TEXT NOT NULL,
@@ -157,21 +157,21 @@ async function main() {
         country TEXT NOT NULL,
         "isDefault" BOOLEAN NOT NULL DEFAULT FALSE,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS "Review" (
+      CREATE TABLE IF NOT EXISTS reviews (
         id TEXT NOT NULL PRIMARY KEY,
-        "productId" TEXT NOT NULL,
-        "userId" TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
         rating INTEGER NOT NULL,
         comment TEXT,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("productId") REFERENCES "Product"(id) ON DELETE CASCADE,
-        FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS "HeroSlide" (
+      CREATE TABLE IF NOT EXISTS hero_slides (
         id TEXT NOT NULL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -184,7 +184,7 @@ async function main() {
         "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
         email TEXT NOT NULL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
         expires TIMESTAMP NOT NULL
@@ -204,10 +204,10 @@ async function main() {
         const hashedPassword = await bcrypt.hash(password, 12)
 
         await client.query(
-            `INSERT INTO "User" (id, email, password, role, name, "createdAt", "updatedAt") 
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-       ON CONFLICT (email) DO UPDATE SET password = $3
-      `,
+            `INSERT INTO users (id, email, password, role, name, "createdAt", "updatedAt") 
+             VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+             ON CONFLICT (email) DO UPDATE SET password = $3
+            `,
             ['admin-' + Date.now(), email, hashedPassword, 'ADMIN', 'Admin User']
         )
 
