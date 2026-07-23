@@ -74,8 +74,10 @@ export default function ProductForm() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [uploadingFileName, setUploadingFileName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [imageErrors, setImageErrors] = useState<string[]>([]);
 
   useEffect(() => {
     fetchCategories();
@@ -111,9 +113,9 @@ export default function ProductForm() {
   const fetchCategories = async () => {
     try {
       console.log('🔄 Fetching categories...')
-      const response = await fetch('/api/categories');
+      const response = await fetch('/api/admin/categories');
       console.log('📡 Categories response status:', response.status)
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Categories fetched:', data)
@@ -172,50 +174,76 @@ export default function ProductForm() {
 
     setImageUploading(true);
     setError('');
+    setImageErrors([]);
+    setSuccess('');
 
     try {
       let successCount = 0;
-      let uploadError = '';
+      const errors: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        setUploadingFileName(file.name);
+        console.log(`📸 Uploading image ${i + 1}/${files.length}: ${file.name}`);
+
         const formData = new FormData();
         formData.append('image', file);
 
-        const response = await fetch('/api/admin/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        try {
+          const response = await fetch('/api/admin/upload', {
+            method: 'POST',
+            body: formData,
+          });
 
-        if (response.ok) {
-          const result = await response.json();
-          const newImage = {
-            url: result.url,
-            alt: form.name || 'Product image',
-            position: form.images.length,
-          };
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`✅ Successfully uploaded: ${file.name}`, result);
 
-          setForm(prev => ({
-            ...prev,
-            images: [...prev.images, newImage],
-          }));
-          successCount++;
-        } else {
-          const errorData = await response.json();
-          uploadError = errorData.message || `Error uploading ${file.name}`;
-          setError(`❌ ${uploadError}`);
+            const newImage = {
+              url: result.url,
+              alt: form.name || 'Product image',
+              position: form.images.length + successCount,
+            };
+
+            setForm(prev => ({
+              ...prev,
+              images: [...prev.images, newImage],
+            }));
+            successCount++;
+          } else {
+            const errorData = await response.json();
+            const errorMsg = errorData.message || errorData.error || `Error uploading ${file.name}`;
+            console.error(`❌ Failed to upload ${file.name}:`, errorMsg);
+            errors.push(`${file.name}: ${errorMsg}`);
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : 'Unknown error';
+          console.error(`❌ Exception uploading ${file.name}:`, errMsg);
+          errors.push(`${file.name}: ${errMsg}`);
         }
       }
 
+      // Show results
       if (successCount > 0) {
-        setSuccess(`✓ ${successCount} image(s) uploaded successfully!`);
-        setTimeout(() => setSuccess(''), 2000);
+        setSuccess(`✅ Successfully uploaded ${successCount} image${successCount !== 1 ? 's' : ''}!`);
       }
+
+      if (errors.length > 0) {
+        setImageErrors(errors);
+      }
+
+      // Reset file input
+      if (event.target) {
+        event.target.value = '';
+      }
+
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Error uploading images';
+      console.error('❌ Upload error:', errorMsg);
       setError(`❌ ${errorMsg}`);
     } finally {
       setImageUploading(false);
+      setUploadingFileName('');
     }
   };
 
@@ -230,8 +258,12 @@ export default function ProductForm() {
 
     setImageUploading(true);
     setError('');
+    setImageErrors([]);
+    setSuccess('');
+    setUploadingFileName(file.name);
 
     try {
+      console.log(`📊 Uploading size chart: ${file.name}`);
       const formData = new FormData();
       formData.append('image', file);
 
@@ -242,21 +274,28 @@ export default function ProductForm() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log(`✅ Size chart uploaded successfully:`, result);
         setForm(prev => ({
           ...prev,
           sizeChartImage: result.url,
         }));
-        setSuccess('✓ Size chart uploaded successfully!');
-        setTimeout(() => setSuccess(''), 2000);
+        setSuccess('✅ Size chart uploaded successfully!');
       } else {
         const errorData = await response.json();
-        setError(`❌ ${errorData.message || 'Error uploading size chart'}`);
+        const errorMsg = errorData.message || errorData.error || 'Error uploading size chart';
+        console.error('❌ Failed to upload size chart:', errorMsg);
+        setImageErrors([`Size chart: ${errorMsg}`]);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Error uploading size chart';
-      setError(`❌ ${errorMsg}`);
+      console.error('❌ Size chart upload error:', errorMsg);
+      setImageErrors([`Size chart: ${errorMsg}`]);
     } finally {
       setImageUploading(false);
+      setUploadingFileName('');
+      if (event.target) {
+        event.target.value = '';
+      }
     }
   };
 
@@ -311,14 +350,72 @@ export default function ProductForm() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* Error Messages */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-r-lg flex justify-between items-start">
+                <div>
+                  <p className="font-semibold">❌ Error</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setError('')}
+                  className="text-red-700 hover:text-red-900 font-bold text-xl"
+                >
+                  ✕
+                </button>
               </div>
             )}
 
+            {/* Image Upload Errors */}
+            {imageErrors.length > 0 && (
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-r-lg">
+                <p className="font-semibold mb-2">❌ Upload Errors ({imageErrors.length})</p>
+                <ul className="space-y-1 text-sm">
+                  {imageErrors.map((err, idx) => (
+                    <li key={idx} className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>{err}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => setImageErrors([])}
+                  className="mt-2 text-red-600 hover:text-red-800 text-sm font-medium underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {/* Upload Status */}
+            {imageUploading && (
+              <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 px-4 py-3 rounded-r-lg">
+                <p className="font-semibold">📸 Uploading...</p>
+                <p className="text-sm">{uploadingFileName || 'Processing images'}</p>
+                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            )}
+
+            {/* Success Messages */}
             {success && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+              <div className="bg-green-50 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded-r-lg flex justify-between items-start">
+                <div>
+                  <p className="font-semibold">✅ Success</p>
+                  <p className="text-sm">{success}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSuccess('')}
+                  className="text-green-700 hover:text-green-900 font-bold text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
                 {success}
               </div>
             )}
@@ -629,30 +726,51 @@ export default function ProductForm() {
                 Product Images
               </label>
 
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+              <div className={`border-2 border-dashed rounded-lg p-6 transition-colors ${imageUploading ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}>
                 <div className="text-center">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <div className="mt-4">
-                    <label htmlFor="image-upload" className="cursor-pointer">
-                      <span className="mt-2 block text-sm font-medium text-gray-900">
-                        {imageUploading ? 'Uploading...' : 'Upload images'}
-                      </span>
-                      <input
-                        id="image-upload"
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={imageUploading}
-                        className="sr-only"
-                      />
-                    </label>
-                    <p className="mt-2 text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
-                  </div>
+                  {imageUploading ? (
+                    <>
+                      <div className="mx-auto h-12 w-12 text-blue-400 animate-spin">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <p className="mt-4 text-sm font-medium text-blue-600">Uploading...</p>
+                      <p className="text-xs text-blue-500 mt-1">{uploadingFileName}</p>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <div className="mt-4">
+                        <label htmlFor="image-upload" className="cursor-pointer">
+                          <span className="mt-2 block text-sm font-medium text-gray-900">
+                            Upload images
+                          </span>
+                          <input
+                            id="image-upload"
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={imageUploading}
+                            className="sr-only"
+                          />
+                        </label>
+                        <p className="mt-2 text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
+
+              {/* Image Counter */}
+              {form.images.length > 0 && (
+                <div className="mt-3 text-sm text-gray-600">
+                  {form.images.length} image{form.images.length !== 1 ? 's' : ''} uploaded
+                </div>
+              )}
 
               {/* Image Preview */}
               {form.images.length > 0 && (
@@ -707,27 +825,41 @@ export default function ProductForm() {
                 )}
 
                 {/* Upload Section */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                <div className={`border-2 border-dashed rounded-lg p-6 transition-colors ${imageUploading ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}>
                   <div className="text-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                      <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <div className="mt-4">
-                      <label htmlFor="size-chart-upload" className="cursor-pointer">
-                        <span className="mt-2 block text-sm font-medium text-gray-900">
-                          {imageUploading ? 'Uploading...' : 'Upload size chart'}
-                        </span>
-                        <input
-                          id="size-chart-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleSizeChartUpload}
-                          disabled={imageUploading}
-                          className="sr-only"
-                        />
-                      </label>
-                      <p className="mt-2 text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                    </div>
+                    {imageUploading && uploadingFileName.includes('chart') ? (
+                      <>
+                        <div className="mx-auto h-12 w-12 text-blue-400 animate-spin">
+                          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <p className="mt-4 text-sm font-medium text-blue-600">Uploading...</p>
+                        <p className="text-xs text-blue-500 mt-1">{uploadingFileName}</p>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <div className="mt-4">
+                          <label htmlFor="size-chart-upload" className="cursor-pointer">
+                            <span className="mt-2 block text-sm font-medium text-gray-900">
+                              Upload size chart
+                            </span>
+                            <input
+                              id="size-chart-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleSizeChartUpload}
+                              disabled={imageUploading}
+                              className="sr-only"
+                            />
+                          </label>
+                          <p className="mt-2 text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
