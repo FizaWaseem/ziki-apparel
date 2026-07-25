@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import Image from 'next/image'
 import Link from 'next/link'
 import Layout from '@/components/Layout'
 import OptimizedImage from '@/components/OptimizedImage'
@@ -484,7 +483,7 @@ export default function Home() {
                     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
                       <div className="relative h-100">
                         {product.images.length > 0 ? (
-                          <Image
+                          <OptimizedImage
                             src={product.images[0].url}
                             alt={product.images[0].alt || product.name}
                             fill
