@@ -16,15 +16,16 @@ const updateProductSchema = z.object({
   categoryId: z.string().min(1, 'Category is required').optional(),
   sizeChartImage: z.string().optional(),
   images: z.array(z.object({
-    url: z.string(),
-    alt: z.string(),
-    position: z.number(),
+    id: z.string().optional(),
+    url: z.string().min(1),
+    alt: z.string().optional(),
+    position: z.number().optional(),
   })).optional(),
   variants: z.array(z.object({
     size: z.string(),
-    color: z.string(),
+    color: z.string().optional(),
     stock: z.number().min(0),
-    price: z.number().min(0),
+    price: z.number().min(0).optional(),
   })).optional(),
 });
 

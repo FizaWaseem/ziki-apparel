@@ -70,7 +70,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // If 'all' parameter is present and user is admin, fetch all orders
       if (all === 'true' && session.user.role === 'ADMIN') {
         const orders = await prisma.order.findMany({
-          include: {
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            paymentStatus: true,
+            paymentMethod: true,
+            shippingAddress: true,
+            notes: true,
+            createdAt: true,
+            updatedAt: true,
             items: {
               include: {
                 product: {
@@ -105,13 +114,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           orderBy: { createdAt: 'desc' },
         });
 
-        return res.status(200).json(orders);
+        const transformedOrders = orders.map((order) => {
+          const total = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+          return {
+            ...order,
+            total,
+            orderNumber: order.id,
+          }
+        })
+
+        return res.status(200).json(transformedOrders);
       }
 
       // Otherwise, fetch only user's orders
       const orders = await prisma.order.findMany({
         where: { userId },
-        include: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          paymentStatus: true,
+          paymentMethod: true,
+          shippingAddress: true,
+          notes: true,
+          createdAt: true,
+          updatedAt: true,
           items: {
             include: {
               product: {
@@ -139,7 +166,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderBy: { createdAt: 'desc' },
       })
 
-      return res.status(200).json(orders)
+      const transformedOrders = orders.map((order) => {
+        const total = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+        return {
+          ...order,
+          total,
+          orderNumber: order.id,
+        }
+      })
+
+      return res.status(200).json(transformedOrders)
     } catch (error) {
       console.error('Error fetching orders:', error)
       return res.status(500).json({ message: 'Internal server error' })

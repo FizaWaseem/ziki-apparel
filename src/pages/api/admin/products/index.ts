@@ -18,9 +18,10 @@ const createProductSchema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   sizeChartImage: z.string().optional(),
   images: z.array(z.object({
-    url: z.string(),
-    alt: z.string(),
-    position: z.number(),
+    id: z.string().optional(),
+    url: z.string().min(1),
+    alt: z.string().optional(),
+    position: z.number().optional(),
   })).optional(),
   variants: z.array(z.object({
     size: z.string(),
