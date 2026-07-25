@@ -6,6 +6,8 @@ import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
+const RELEASE_MARKER = 'release-2026-07-25-verify-v1'
+
 const createProductSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   slug: z.string().min(1, 'Product slug is required'),
@@ -29,10 +31,11 @@ const createProductSchema = z.object({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader('X-Release-Marker', RELEASE_MARKER)
   const session = await getServerSession(req, res, authOptions);
 
   if (!session?.user || session.user.role !== 'ADMIN') {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ message: 'Unauthorized', release: RELEASE_MARKER });
   }
 
   if (req.method === 'GET') {
@@ -59,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json(
         products.map((product) => ({
           ...product,
+          release: RELEASE_MARKER,
           images: product.images.map((image, index) => ({
             ...image,
             position: index,
@@ -90,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       if (!category) {
-        return res.status(400).json({ message: 'Selected category does not exist' });
+        return res.status(400).json({ message: 'Selected category does not exist', release: RELEASE_MARKER });
       }
 
       const normalizedVariants = (variants || [])
@@ -107,6 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (variantKeys.has(key)) {
           return res.status(400).json({
             message: `Duplicate variant detected for size "${variant.size}" and color "${variant.color || 'N/A'}"`,
+            release: RELEASE_MARKER,
           });
         }
         variantKeys.add(key);
@@ -118,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       if (existingProduct) {
-        return res.status(400).json({ message: 'Product slug already exists' });
+        return res.status(400).json({ message: 'Product slug already exists', release: RELEASE_MARKER });
       }
 
       // Create product with transaction
@@ -184,6 +189,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         product
           ? {
               ...product,
+              release: RELEASE_MARKER,
               images: product.images.map((image, index) => ({
                 ...image,
                 position: index,
@@ -196,16 +202,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          return res.status(400).json({ message: 'Duplicate value conflict (slug, SKU, or variant combination already exists)' });
+          return res.status(400).json({ message: 'Duplicate value conflict (slug, SKU, or variant combination already exists)', release: RELEASE_MARKER });
         }
 
         if (error.code === 'P2003') {
-          return res.status(400).json({ message: 'Invalid relation data (category, product, or variant reference failed)' });
+          return res.status(400).json({ message: 'Invalid relation data (category, product, or variant reference failed)', release: RELEASE_MARKER });
         }
       }
 
       const message = error instanceof Error ? error.message : 'Internal server error';
-      return res.status(500).json({ message: 'Internal server error', details: message });
+      return res.status(500).json({ message: 'Internal server error', details: message, release: RELEASE_MARKER });
     }
   }
 

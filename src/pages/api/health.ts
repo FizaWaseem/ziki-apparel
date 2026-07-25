@@ -1,8 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 
+const RELEASE_MARKER = 'release-2026-07-25-verify-v1'
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     try {
+        res.setHeader('X-Release-Marker', RELEASE_MARKER)
         console.log('🔍 Health Check: Testing environment and database connection...')
         
         // Check environment
@@ -22,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({
             status: 'ok',
+            release: RELEASE_MARKER,
             database: 'connected',
             userCount: users,
             environment: env,
@@ -38,6 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             return res.status(500).json({
                 status: 'error',
+                release: RELEASE_MARKER,
                 database: 'connection_failed',
                 error: error.message,
                 name: error.name,
@@ -52,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(500).json({
             status: 'error',
+            release: RELEASE_MARKER,
             database: 'connection_failed',
             error: String(error)
         })
