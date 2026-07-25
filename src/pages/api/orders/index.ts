@@ -31,19 +31,16 @@ const createOrderSchema = z.object({
     country: z.string().min(1),
   }),
   paymentMethod: z.object({
-    type: z.enum(['cod', 'jazzcash', 'bank']),
+    type: z.enum(['cod', 'jazzcash']),
     jazzCashTransactionId: z.string().optional(),
     jazzCashScreenshotPath: z.string().optional(),
-    bankName: z.string().optional(),
-    bankAccountNumber: z.string().optional(),
-    bankAccountName: z.string().optional(),
   }),
   items: z.array(z.object({
     productId: z.string(),
     variantId: z.string().optional(),
     quantity: z.number().min(1),
     price: z.number().min(0),
-  })),
+  })).min(1, 'At least one item is required'),
   summary: z.object({
     subtotal: z.number(),
     tax: z.number(),
@@ -142,6 +139,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { shippingAddress, paymentMethod, items, summary } = validation.data
 
+      if (paymentMethod.type === 'jazzcash') {
+        const hasTransactionId = !!paymentMethod.jazzCashTransactionId?.trim()
+        const hasScreenshot = !!paymentMethod.jazzCashScreenshotPath?.trim()
+        if (!hasTransactionId && !hasScreenshot) {
+          return res.status(400).json({
+            message: 'JazzCash/EasyPaisa checkout requires transaction ID or screenshot',
+          })
+        }
+      }
+
       // Get or create user for guest checkout
       let userId: string
       if (session?.user?.id) {
@@ -197,6 +204,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
           }
 
+          if (variant.productId !== item.productId) {
+            return res.status(400).json({
+              message: `Variant ${item.variantId} does not belong to product ${item.productId}`
+            })
+          }
+
           if (variant.stock < item.quantity) {
             return res.status(400).json({
               message: `Insufficient stock for ${product.name} (${variant.size})`
@@ -206,13 +219,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Create the order
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const order = await prisma.$transaction(async (tx: any) => {
-        // Determine payment status based on payment method
-        let paymentStatus = 'PENDING'
-        if (paymentMethod.type === 'jazzcash' || paymentMethod.type === 'bank') {
-          paymentStatus = 'PROCESSING'
-        }
+      const order = await prisma.$transaction(async (tx) => {
+        // Keep PENDING until payment verification/settlement updates it
+        const paymentStatus = 'PENDING'
 
         // Create order
         const newOrder = await tx.order.create({
@@ -352,10 +361,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ...(paymentMethod.type === 'jazzcash' && {
               transactionId: paymentMethod.jazzCashTransactionId,
             }),
-            ...(paymentMethod.type === 'bank' && {
-              bankName: paymentMethod.bankName,
-              bankAccountNumber: paymentMethod.bankAccountNumber,
-            }),
           };
 
           // Create properly typed admin order data
@@ -394,8 +399,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           interface PaymentDetails {
             type: string;
             transactionId?: string;
-            bankName?: string;
-            bankAccountNumber?: string;
           }
 
           const typedPaymentDetails: PaymentDetails = paymentDetails;

@@ -20,14 +20,10 @@ interface ShippingAddress {
 }
 
 interface PaymentMethod {
-  type: 'cod' | 'jazzcash' | 'bank'
-  // Jazz Cash fields
+  type: 'cod' | 'jazzcash'
+  // JazzCash / EasyPaisa fields
   jazzCashTransactionId?: string
   jazzCashScreenshot?: File | null
-  // Bank Account fields
-  bankAccountNumber?: string
-  bankAccountName?: string
-  bankName?: string
 }
 
 interface CartSummary {
@@ -43,7 +39,7 @@ export default function CheckoutPage() {
     <>
       <Head>
         <title>Secure Checkout - Ziki Apparel</title>
-        <meta name="description" content="Complete your purchase at Ziki Apparel. Secure checkout with multiple payment options including card, Jazz Cash, and bank transfer." />
+        <meta name="description" content="Complete your purchase at Ziki Apparel. Secure checkout with Cash on Delivery and JazzCash/EasyPaisa." />
         <meta name="robots" content="noindex" />
       </Head>
       <CheckoutPageContent />
@@ -187,22 +183,6 @@ function CheckoutPageContent() {
       return true
     }
 
-    if (paymentMethod.type === 'bank') {
-      if (!paymentMethod.bankName?.trim()) {
-        alert('Please enter your bank name')
-        return false
-      }
-      if (!paymentMethod.bankAccountNumber?.trim()) {
-        alert('Please enter your account number')
-        return false
-      }
-      if (!paymentMethod.bankAccountName?.trim()) {
-        alert('Please enter the account holder name')
-        return false
-      }
-      return true
-    }
-
     return false
   }
 
@@ -263,11 +243,6 @@ function CheckoutPageContent() {
           ...(paymentMethod.type === 'jazzcash' && {
             jazzCashTransactionId: paymentMethod.jazzCashTransactionId,
             jazzCashScreenshotPath: screenshotPath,
-          }),
-          ...(paymentMethod.type === 'bank' && {
-            bankName: paymentMethod.bankName,
-            bankAccountNumber: paymentMethod.bankAccountNumber,
-            bankAccountName: paymentMethod.bankAccountName,
           }),
         },
         items: items.map(item => ({
@@ -573,7 +548,7 @@ function CheckoutPageContent() {
                           </label>
                         </div>
 
-                        {/* Jazz Cash */}
+                        {/* JazzCash / EasyPaisa */}
                         <div className="border rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors"
                           onClick={() => setPaymentMethod({ ...paymentMethod, type: 'jazzcash' })}>
                           <label className="flex items-center cursor-pointer">
@@ -586,14 +561,14 @@ function CheckoutPageContent() {
                               className="mr-3"
                             />
                             <div className="flex-1">
-                              <h3 className="font-semibold">Jazz Cash</h3>
-                              <p className="text-gray-600 text-sm">Pay using your Jazz Cash account</p>
+                              <h3 className="font-semibold">JazzCash / EasyPaisa</h3>
+                              <p className="text-gray-600 text-sm">Pay using your JazzCash or EasyPaisa account</p>
                             </div>
                             <div className="text-2xl">📱</div>
                           </label>
                         </div>
 
-                        {/* Jazz Cash Details */}
+                        {/* JazzCash / EasyPaisa Details */}
                         {paymentMethod.type === 'jazzcash' && (
                           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
                             {/* Account Information */}
@@ -608,7 +583,7 @@ function CheckoutPageContent() {
                             {/* Instructions */}
                             <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
                               <p className="text-sm text-yellow-800">
-                                <span className="font-medium">📝 Instructions:</span> Send the amount to the Jazz Cash number above, then provide either the Transaction ID or a screenshot of the transaction below.
+                                <span className="font-medium">📝 Instructions:</span> Send the amount via JazzCash or EasyPaisa, then provide either the Transaction ID or a screenshot below.
                               </p>
                             </div>
 
@@ -624,7 +599,7 @@ function CheckoutPageContent() {
                                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="e.g., TXN123456789"
                               />
-                              <p className="text-xs text-gray-500 mt-1">The transaction ID from your Jazz Cash receipt</p>
+                              <p className="text-xs text-gray-500 mt-1">Transaction ID from your JazzCash/EasyPaisa receipt</p>
                             </div>
 
                             {/* Screenshot Upload */}
@@ -645,69 +620,6 @@ function CheckoutPageContent() {
                             </div>
 
                             <p className="text-xs text-blue-700">ℹ️ At least one of Transaction ID or Screenshot is required</p>
-                          </div>
-                        )}
-
-                        {/* Bank Account */}
-                        <div className="border rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors"
-                          onClick={() => setPaymentMethod({ ...paymentMethod, type: 'bank' })}>
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="bank"
-                              checked={paymentMethod.type === 'bank'}
-                              onChange={() => setPaymentMethod({ ...paymentMethod, type: 'bank' })}
-                              className="mr-3"
-                            />
-                            <div className="flex-1">
-                              <h3 className="font-semibold">Bank Transfer</h3>
-                              <p className="text-gray-600 text-sm">Pay directly from your bank account</p>
-                            </div>
-                            <div className="text-2xl">🏦</div>
-                          </label>
-                        </div>
-
-                        {/* Bank Account Details */}
-                        {paymentMethod.type === 'bank' && (
-                          <div className="bg-green-50 p-4 rounded-lg border border-green-200 space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Bank Name *
-                              </label>
-                              <input
-                                type="text"
-                                value={paymentMethod.bankName || ''}
-                                onChange={(e) => setPaymentMethod({ ...paymentMethod, bankName: e.target.value })}
-                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="e.g., HBL, UBL, Habib Bank"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Account Number *
-                              </label>
-                              <input
-                                type="text"
-                                value={paymentMethod.bankAccountNumber || ''}
-                                onChange={(e) => setPaymentMethod({ ...paymentMethod, bankAccountNumber: e.target.value })}
-                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Enter your account number"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Account Holder Name *
-                              </label>
-                              <input
-                                type="text"
-                                value={paymentMethod.bankAccountName || ''}
-                                onChange={(e) => setPaymentMethod({ ...paymentMethod, bankAccountName: e.target.value })}
-                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Enter the account holder name"
-                              />
-                            </div>
-                            <p className="text-sm text-green-700 font-medium">⚠️ Your account information will be securely stored</p>
                           </div>
                         )}
                       </div>
@@ -747,20 +659,13 @@ function CheckoutPageContent() {
                           )}
                           {paymentMethod.type === 'jazzcash' && (
                             <div>
-                              <p className="font-medium">📱 Jazz Cash</p>
+                              <p className="font-medium">📱 JazzCash / EasyPaisa</p>
                               {paymentMethod.jazzCashTransactionId && (
                                 <p className="text-sm">Transaction ID: {paymentMethod.jazzCashTransactionId}</p>
                               )}
                               {paymentMethod.jazzCashScreenshot && (
                                 <p className="text-sm">Screenshot: {paymentMethod.jazzCashScreenshot.name}</p>
                               )}
-                            </div>
-                          )}
-                          {paymentMethod.type === 'bank' && (
-                            <div>
-                              <p className="font-medium">🏦 Bank Transfer</p>
-                              <p className="text-sm">Bank: {paymentMethod.bankName}</p>
-                              <p className="text-sm">Account: {paymentMethod.bankAccountNumber?.slice(-4) && `****${paymentMethod.bankAccountNumber.slice(-4)}`}</p>
                             </div>
                           )}
 
