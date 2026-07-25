@@ -49,56 +49,60 @@ export default async function handler(
 
   if (req.method === 'GET') {
     try {
-      // Remove stale rows before relational includes to avoid required-relation crashes.
-      await prisma.$executeRaw`
-        DELETE FROM "cart_items"
-        WHERE "user_id" = ${userId}
-          AND (
-            NOT EXISTS (
-              SELECT 1 FROM "products"
-              WHERE "products"."id" = "cart_items"."product_id"
-            )
-            OR (
-              "variant_id" IS NOT NULL
-              AND NOT EXISTS (
-                SELECT 1 FROM "product_variants"
-                WHERE "product_variants"."id" = "cart_items"."variant_id"
-              )
-            )
-          )
-      `
-
-      const cartItems = await prisma.cartItem.findMany({
+      const cartRows = await prisma.cartItem.findMany({
         where: { userId },
-        include: {
-          product: {
-            include: {
-              images: {
-                select: {
-                  id: true,
-                  url: true,
-                },
-                take: 1,
-              },
-              category: true,
-            },
-          },
-          variant: {
-            select: {
-              id: true,
-              size: true,
-              color: true,
-              stock: true,
-            },
-          },
+        select: {
+          id: true,
+          userId: true,
+          productId: true,
+          variantId: true,
+          quantity: true,
+          createdAt: true,
+          updatedAt: true,
         },
         orderBy: { createdAt: 'desc' },
       })
 
-      // Self-heal orphan cart rows (e.g. deleted product/variant with stale references)
-      const invalidItemIds = cartItems
-        .filter((item: CartItemWithDetails) => !item.product || (item.variantId && !item.variant))
-        .map((item: CartItemWithDetails) => item.id)
+      const productIds = Array.from(new Set(cartRows.map((row) => row.productId)))
+      const variantIds = Array.from(
+        new Set(cartRows.map((row) => row.variantId).filter((id): id is string => Boolean(id)))
+      )
+
+      const [products, variants] = await Promise.all([
+        productIds.length > 0
+          ? prisma.product.findMany({
+              where: { id: { in: productIds } },
+              include: {
+                images: {
+                  select: {
+                    id: true,
+                    url: true,
+                  },
+                  take: 1,
+                },
+                category: true,
+              },
+            })
+          : Promise.resolve([]),
+        variantIds.length > 0
+          ? prisma.productVariant.findMany({
+              where: { id: { in: variantIds } },
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+              },
+            })
+          : Promise.resolve([]),
+      ])
+
+      const productsById = new Map(products.map((product) => [product.id, product]))
+      const variantsById = new Map(variants.map((variant) => [variant.id, variant]))
+
+      const invalidItemIds = cartRows
+        .filter((item) => !productsById.has(item.productId) || (item.variantId && !variantsById.has(item.variantId)))
+        .map((item) => item.id)
 
       if (invalidItemIds.length > 0) {
         await prisma.cartItem.deleteMany({
@@ -109,14 +113,18 @@ export default async function handler(
         })
       }
 
-      const validCartItems = cartItems.filter(
-        (item: CartItemWithDetails) => item.product && (!item.variantId || item.variant)
-      )
+      const validCartItems = cartRows
+        .filter((item) => !invalidItemIds.includes(item.id))
+        .map((item) => ({
+          ...item,
+          product: productsById.get(item.productId) ?? null,
+          variant: item.variantId ? variantsById.get(item.variantId) ?? null : null,
+        }))
 
       // Calculate cart totals
       const subtotal = validCartItems.reduce((total: number, item: CartItemWithDetails) => {
         const productPrice = item.product?.price ?? 0
-        const price = item.variant?.price ?? productPrice
+        const price = productPrice
         return total + (price * item.quantity)
       }, 0)
 
@@ -125,9 +133,9 @@ export default async function handler(
       const total = subtotal + tax + shipping
 
       res.status(200).json({
-        items: validCartItems.map((item: CartItemWithDetails) => ({
+        items: validCartItems.map((item) => ({
           ...item,
-          price: item.variant?.price ?? item.product?.price ?? 0,
+          price: item.product?.price ?? 0,
         })),
         summary: {
           subtotal: Math.round(subtotal * 100) / 100,

@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Get dashboard statistics
-    const [totalOrders, totalProducts, totalCustomers, recentOrdersRaw, revenue] = await Promise.all([
+    const [totalOrders, totalProducts, totalCustomers, recentOrdersRaw] = await Promise.all([
       // Total orders count
       prisma.order.count(),
       
@@ -35,22 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         select: {
           id: true,
           userId: true,
-          total: true,
+          subtotal: true,
+          tax: true,
+          shipping: true,
           status: true,
           createdAt: true,
         },
-      }),
-      
-      // Total revenue
-      prisma.order.aggregate({
-        _sum: {
-          total: true,
-        },
-        where: {
-          status: {
-            in: ['DELIVERED', 'PROCESSING', 'SHIPPED']
-          }
-        }
       }),
     ]);
 
@@ -68,18 +58,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const usersById = new Map(users.map((user) => [user.id, user]));
 
+    const revenueStatuses = new Set(['DELIVERED', 'PROCESSING', 'SHIPPED']);
+    const totalRevenue = recentOrdersRaw
+      .filter((order) => revenueStatuses.has(order.status))
+      .reduce((sum, order) => {
+        const subtotal = order.subtotal ?? 0;
+        const tax = order.tax ?? 0;
+        const shipping = order.shipping ?? 0;
+        return sum + subtotal + tax + shipping;
+      }, 0);
+
     const dashboardStats = {
       totalOrders,
-      totalRevenue: revenue._sum.total || 0,
+      totalRevenue,
       totalProducts,
       totalCustomers,
       recentOrders: recentOrdersRaw.map(order => {
         const customer = usersById.get(order.userId);
+        const subtotal = order.subtotal ?? 0;
+        const tax = order.tax ?? 0;
+        const shipping = order.shipping ?? 0;
         return {
         id: order.id,
         customerName: customer?.name || 'Unknown',
         customerEmail: customer?.email || 'N/A',
-        total: order.total,
+        total: subtotal + tax + shipping,
         status: order.status,
         createdAt: order.createdAt.toISOString(),
       }}),
