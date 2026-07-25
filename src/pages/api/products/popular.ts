@@ -34,9 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           select: {
             id: true,
             url: true,
-            position: true
           },
-          orderBy: { position: 'asc' as const },
           take: 1
         },
         _count: {

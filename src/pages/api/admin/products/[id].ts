@@ -55,9 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             select: {
               id: true,
               url: true,
-              position: true,
             },
-            orderBy: { position: 'asc' },
           },
           variants: true,
         },
@@ -67,7 +65,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ message: 'Product not found' });
       }
 
-      return res.status(200).json(product);
+      return res.status(200).json({
+        ...product,
+        images: product.images.map((image, index) => ({
+          ...image,
+          position: index,
+        })),
+      });
     } catch (error) {
       console.error('Error fetching product:', error);
       return res.status(500).json({ message: 'Internal server error' });
@@ -167,7 +171,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               data: images.map(img => ({
                 productId: id,
                 url: img.url,
-                position: img.position,
               })),
             });
           }
@@ -203,16 +206,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               select: {
                 id: true,
                 url: true,
-                position: true,
               },
-              orderBy: { position: 'asc' },
             },
             variants: true,
           },
         });
       });
 
-      return res.status(200).json(product);
+      return res.status(200).json(
+        product
+          ? {
+              ...product,
+              images: product.images.map((image, index) => ({
+                ...image,
+                position: index,
+              })),
+            }
+          : product
+      );
     } catch (error) {
       console.error('Error updating product:', error);
 

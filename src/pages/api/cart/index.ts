@@ -71,9 +71,7 @@ export default async function handler(
                 select: {
                   id: true,
                   url: true,
-                  position: true,
                 },
-                orderBy: { position: 'asc' },
                 take: 1,
               },
               category: true,
@@ -193,10 +191,8 @@ export default async function handler(
                   select: {
                     id: true,
                     url: true,
-                    position: true,
                   },
                   take: 1,
-                  orderBy: { position: 'asc' },
                 },
               },
             },
@@ -224,10 +220,8 @@ export default async function handler(
                   select: {
                     id: true,
                     url: true,
-                    position: true,
                   },
                   take: 1,
-                  orderBy: { position: 'asc' },
                 },
               },
             },
@@ -300,10 +294,8 @@ export default async function handler(
                   select: {
                     id: true,
                     url: true,
-                    position: true,
                   },
                   take: 1,
-                  orderBy: { position: 'asc' },
                 },
               },
             },

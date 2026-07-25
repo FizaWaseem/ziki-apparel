@@ -129,9 +129,7 @@ export default async function handler(
             select: {
               id: true,
               url: true,
-              position: true
             },
-            orderBy: { position: 'asc' as const },
             take: 2  // Only first 2 images for list view
           },
           _count: {
