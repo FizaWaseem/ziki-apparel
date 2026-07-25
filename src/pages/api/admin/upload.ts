@@ -4,7 +4,7 @@ import { authOptions } from '../auth/[...nextauth]';
 import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
-import { supabase, PRODUCT_IMAGES_BUCKET } from '@/lib/supabase-storage';
+import { put } from '@vercel/blob';
 
 export const config = {
   api: {
@@ -26,10 +26,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let tempFilePath: string | null = null;
 
   try {
-    // Check Supabase configuration
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    // Check Vercel Blob configuration
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
       return res.status(500).json({
-        message: 'Supabase storage not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to environment variables.',
+        message: 'Vercel Blob storage not configured. Add BLOB_READ_WRITE_TOKEN to environment variables.',
       });
     }
 
@@ -71,34 +71,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const randomString = Math.random().toString(36).substring(2, 8);
     const filename = `product-${timestamp}-${randomString}${extension}`;
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(PRODUCT_IMAGES_BUCKET)
-      .upload(filename, fileBuffer, {
-        contentType: file.mimetype || 'image/jpeg',
-        cacheControl: '3600',
-      });
+    // Upload to Vercel Blob
+    const blob = await put(filename, fileBuffer, {
+      access: 'public',
+      contentType: file.mimetype || 'image/jpeg',
+    });
 
-    if (error) {
-      console.error('Supabase upload error:', error);
-      return res.status(500).json({
-        message: `Failed to upload image: ${error.message}`,
-        error: error.message,
-      });
-    }
-
-    // Get public URL
-    const { data: publicURLData } = supabase.storage
-      .from(PRODUCT_IMAGES_BUCKET)
-      .getPublicUrl(filename);
-
-    const url = publicURLData?.publicUrl;
+    const url = blob.url;
 
     if (!url) {
       return res.status(500).json({ message: 'Failed to generate public URL' });
     }
 
     return res.status(200).json({
+      message: 'Image uploaded successfully',
       url,
       filename,
       size: file.size,
