@@ -149,7 +149,7 @@ model CartItem {
   id        String @id @default(cuid())
   userId    String @map("user_id")
   productId String @map("product_id")
-  variantId String? @map("variant_id")
+  variantId String? @map("variantId")
   quantity  Int    @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

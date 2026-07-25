@@ -35,9 +35,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         select: {
           id: true,
           userId: true,
-          subtotal: true,
-          tax: true,
-          shipping: true,
           status: true,
           createdAt: true,
         },
@@ -58,15 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const usersById = new Map(users.map((user) => [user.id, user]));
 
-    const revenueStatuses = new Set(['DELIVERED', 'PROCESSING', 'SHIPPED']);
-    const totalRevenue = recentOrdersRaw
-      .filter((order) => revenueStatuses.has(order.status))
-      .reduce((sum, order) => {
-        const subtotal = order.subtotal ?? 0;
-        const tax = order.tax ?? 0;
-        const shipping = order.shipping ?? 0;
-        return sum + subtotal + tax + shipping;
-      }, 0);
+    const totalRevenue = 0;
 
     const dashboardStats = {
       totalOrders,
@@ -75,14 +64,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       totalCustomers,
       recentOrders: recentOrdersRaw.map(order => {
         const customer = usersById.get(order.userId);
-        const subtotal = order.subtotal ?? 0;
-        const tax = order.tax ?? 0;
-        const shipping = order.shipping ?? 0;
         return {
         id: order.id,
         customerName: customer?.name || 'Unknown',
         customerEmail: customer?.email || 'N/A',
-        total: subtotal + tax + shipping,
+        total: 0,
         status: order.status,
         createdAt: order.createdAt.toISOString(),
       }}),
