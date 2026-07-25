@@ -113,13 +113,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .map((variant) => ({
           ...variant,
           size: variant.size.trim(),
-          color: variant.color.trim(),
+          color: variant.color?.trim(),
         }))
         .filter((variant) => variant.size.length > 0);
 
       const variantKeys = new Set<string>();
       for (const variant of normalizedVariants) {
-        const key = `${variant.size.toLowerCase()}::${variant.color.toLowerCase()}`;
+        const key = `${variant.size.toLowerCase()}::${variant.color?.toLowerCase() || 'n/a'}`;
         if (variantKeys.has(key)) {
           return res.status(400).json({
             message: `Duplicate variant detected for size "${variant.size}" and color "${variant.color || 'N/A'}"`,
@@ -208,17 +208,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(201).json(
         product
           ? {
-              ...product,
-              release: RELEASE_MARKER,
-              variants: product.variants.map((variant) => ({
-                ...variant,
-                price,
-              })),
-              images: product.images.map((image, index) => ({
-                ...image,
-                position: index,
-              })),
-            }
+            ...product,
+            release: RELEASE_MARKER,
+            variants: product.variants.map((variant) => ({
+              ...variant,
+              price,
+            })),
+            images: product.images.map((image, index) => ({
+              ...image,
+              position: index,
+            })),
+          }
           : product
       );
     } catch (error) {
