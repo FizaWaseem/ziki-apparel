@@ -49,6 +49,11 @@ export default async function handler(
           product: {
             include: {
               images: {
+                select: {
+                  id: true,
+                  url: true,
+                  position: true,
+                },
                 orderBy: { position: 'asc' },
                 take: 1,
               },
@@ -165,7 +170,15 @@ export default async function handler(
           include: {
             product: {
               include: {
-                images: { take: 1, orderBy: { position: 'asc' } },
+                images: {
+                  select: {
+                    id: true,
+                    url: true,
+                    position: true,
+                  },
+                  take: 1,
+                  orderBy: { position: 'asc' },
+                },
               },
             },
             variant: true,
@@ -188,7 +201,15 @@ export default async function handler(
           include: {
             product: {
               include: {
-                images: { take: 1, orderBy: { position: 'asc' } },
+                images: {
+                  select: {
+                    id: true,
+                    url: true,
+                    position: true,
+                  },
+                  take: 1,
+                  orderBy: { position: 'asc' },
+                },
               },
             },
             variant: true,
@@ -256,7 +277,15 @@ export default async function handler(
           include: {
             product: {
               include: {
-                images: { take: 1, orderBy: { position: 'asc' } },
+                images: {
+                  select: {
+                    id: true,
+                    url: true,
+                    position: true,
+                  },
+                  take: 1,
+                  orderBy: { position: 'asc' },
+                },
               },
             },
             variant: true,

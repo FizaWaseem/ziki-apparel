@@ -129,7 +129,6 @@ export default async function handler(
             select: {
               id: true,
               url: true,
-              alt: true,
               position: true
             },
             orderBy: { position: 'asc' as const },

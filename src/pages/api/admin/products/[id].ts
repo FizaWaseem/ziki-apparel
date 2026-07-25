@@ -52,6 +52,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
           },
           images: {
+            select: {
+              id: true,
+              url: true,
+              position: true,
+            },
             orderBy: { position: 'asc' },
           },
           variants: true,
@@ -162,7 +167,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               data: images.map(img => ({
                 productId: id,
                 url: img.url,
-                alt: img.alt,
                 position: img.position,
               })),
             });
@@ -195,7 +199,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           where: { id },
           include: {
             category: true,
-            images: { orderBy: { position: 'asc' } },
+            images: {
+              select: {
+                id: true,
+                url: true,
+                position: true,
+              },
+              orderBy: { position: 'asc' },
+            },
             variants: true,
           },
         });

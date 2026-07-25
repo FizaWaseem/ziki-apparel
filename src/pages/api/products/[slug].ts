@@ -17,6 +17,11 @@ export default async function handler(
         include: {
           category: true,
           images: {
+            select: {
+              id: true,
+              url: true,
+              position: true,
+            },
             orderBy: { position: 'asc' }
           },
           variants: {
