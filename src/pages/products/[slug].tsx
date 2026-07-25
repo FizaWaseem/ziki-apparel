@@ -98,6 +98,7 @@ export default function ProductDetailPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [showCartSidebar, setShowCartSidebar] = useState(false)
   const [cartSummary, setCartSummary] = useState<{ subtotal: number; tax: number; shipping: number; total: number } | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Calculate cart summary when items change (for guests)
   useEffect(() => {
@@ -127,12 +128,15 @@ export default function ProductDetailPage() {
           if (response.ok) {
             const data = await response.json()
             setProduct(data)
-          } else {
+            setLoadError(null)
+          } else if (response.status === 404) {
             router.push('/404')
+          } else {
+            setLoadError('Unable to load this product right now. Please try again shortly.')
           }
         } catch (error) {
           console.error('Error fetching product:', error)
-          router.push('/404')
+          setLoadError('Unable to load this product right now. Please try again shortly.')
         } finally {
           setLoading(false)
         }
@@ -233,14 +237,17 @@ export default function ProductDetailPage() {
     return (
       <>
         <Head>
-          <title>Product not found - Ziki Apparel</title>
-          <meta name="description" content="The product you're looking for could not be found" />
+          <title>{loadError ? 'Unable to load product - Ziki Apparel' : 'Product not found - Ziki Apparel'}</title>
+          <meta name="description" content={loadError || "The product you're looking for could not be found"} />
           <meta name="robots" content="noindex" />
         </Head>
         <Layout>
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Product not found</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">{loadError ? 'Something went wrong' : 'Product not found'}</h1>
+              {loadError && (
+                <p className="text-gray-600 mb-4">{loadError}</p>
+              )}
               <Link href="/products" className="text-blue-600 hover:text-blue-500">
                 Browse our products
               </Link>
