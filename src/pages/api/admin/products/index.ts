@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 const createProductSchema = z.object({
@@ -71,6 +72,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { name, slug, description, price, status, featured, categoryId, sizeChartImage, images, variants } = validation.data;
 
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { id: true },
+      });
+
+      if (!category) {
+        return res.status(400).json({ message: 'Selected category does not exist' });
+      }
+
+      const normalizedVariants = (variants || [])
+        .map((variant) => ({
+          ...variant,
+          size: variant.size.trim(),
+          color: variant.color.trim(),
+        }))
+        .filter((variant) => variant.size.length > 0);
+
+      const variantKeys = new Set<string>();
+      for (const variant of normalizedVariants) {
+        const key = `${variant.size.toLowerCase()}::${variant.color.toLowerCase()}`;
+        if (variantKeys.has(key)) {
+          return res.status(400).json({
+            message: `Duplicate variant detected for size "${variant.size}" and color "${variant.color || 'N/A'}"`,
+          });
+        }
+        variantKeys.add(key);
+      }
+
       // Check if slug is unique
       const existingProduct = await prisma.product.findUnique({
         where: { slug },
@@ -109,9 +138,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Create variants if provided
-        if (variants && variants.length > 0) {
+        if (normalizedVariants.length > 0) {
           await tx.productVariant.createMany({
-            data: variants.map(variant => ({
+            data: normalizedVariants.map(variant => ({
               productId: newProduct.id,
               size: variant.size,
               color: variant.color || null,
@@ -135,7 +164,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(201).json(product);
     } catch (error) {
       console.error('Error creating product:', error);
-      return res.status(500).json({ message: 'Internal server error' });
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          return res.status(400).json({ message: 'Duplicate value conflict (slug, SKU, or variant combination already exists)' });
+        }
+
+        if (error.code === 'P2003') {
+          return res.status(400).json({ message: 'Invalid relation data (category, product, or variant reference failed)' });
+        }
+      }
+
+      const message = error instanceof Error ? error.message : 'Internal server error';
+      return res.status(500).json({ message: 'Internal server error', details: message });
     }
   }
 

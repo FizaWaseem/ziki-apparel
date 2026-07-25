@@ -389,17 +389,6 @@ export default function ProductForm() {
               </div>
             )}
 
-            {/* Upload Status */}
-            {imageUploading && (
-              <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 px-4 py-3 rounded-r-lg">
-                <p className="font-semibold">📸 Uploading...</p>
-                <p className="text-sm">{uploadingFileName || 'Processing images'}</p>
-                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
-                </div>
-              </div>
-            )}
-
             {/* Success Messages */}
             {success && (
               <div className="bg-green-50 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded-r-lg flex justify-between items-start">
@@ -802,7 +791,15 @@ export default function ProductForm() {
                 </div>
               )}
             </div>
-
+ {imageUploading && (
+              <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 px-4 py-3 rounded-r-lg">
+                <p className="font-semibold">📸 Uploading...</p>
+                <p className="text-sm">{uploadingFileName || 'Processing images'}</p>
+                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            )}
             {/* Size Chart Image */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
