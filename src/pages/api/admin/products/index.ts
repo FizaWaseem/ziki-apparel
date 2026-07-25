@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
 const createProductSchema = z.object({
@@ -138,12 +139,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Create images if provided
         if (images && images.length > 0) {
-          await tx.productImage.createMany({
-            data: images.map(img => ({
-              productId: newProduct.id,
-              url: img.url,
-            })),
-          });
+          const imageValues = images.map((img) =>
+            Prisma.sql`(${randomUUID()}, ${img.url}, ${newProduct.id})`
+          );
+
+          await tx.$executeRaw(
+            Prisma.sql`
+              INSERT INTO "product_images" ("id", "url", "product_id")
+              VALUES ${Prisma.join(imageValues)}
+            `
+          );
         }
 
         // Create variants if provided
