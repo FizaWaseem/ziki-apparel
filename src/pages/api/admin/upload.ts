@@ -13,10 +13,20 @@ export const config = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Check authentication: Either NextAuth session OR Bearer token
   const session = await getServerSession(req, res, authOptions);
-
-  if (!session?.user || session.user.role !== 'ADMIN') {
-    return res.status(401).json({ message: 'Unauthorized' });
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  
+  // Verify authentication
+  const isAuthenticatedViaSession = session?.user?.role === 'ADMIN';
+  const isAuthenticatedViaToken = bearerToken === process.env.ADMIN_API_TOKEN;
+  
+  if (!isAuthenticatedViaSession && !isAuthenticatedViaToken) {
+    return res.status(401).json({ 
+      message: 'Unauthorized - Please provide valid session or Bearer token',
+      hint: 'Use Bearer token: Authorization: Bearer YOUR_ADMIN_API_TOKEN' 
+    });
   }
 
   if (req.method !== 'POST') {
