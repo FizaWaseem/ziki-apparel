@@ -10,7 +10,13 @@ interface CartItemWithDetails {
   productId: string
   variantId?: string | null
   quantity: number
-  variant?: { price: number | null } | null
+  variant?: {
+    id?: string
+    size?: string
+    color?: string | null
+    stock?: number
+    price?: number | null
+  } | null
   product?: { price: number } | null
 }
 
