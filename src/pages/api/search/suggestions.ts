@@ -35,8 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         price: true,
         images: {
           select: {
-            url: true,
-            alt: true
+            url: true
           },
           orderBy: { position: 'asc' },
           take: 1

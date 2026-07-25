@@ -76,6 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 product: {
                   include: {
                     images: {
+                      select: {
+                        id: true,
+                        url: true,
+                        position: true,
+                      },
                       orderBy: { position: 'asc' },
                       take: 1,
                     },
@@ -107,6 +112,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               product: {
                 include: {
                   images: {
+                    select: {
+                      id: true,
+                      url: true,
+                      position: true,
+                    },
                     orderBy: { position: 'asc' },
                     take: 1,
                   },
@@ -293,6 +303,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               product: {
                 include: {
                   images: {
+                    select: {
+                      id: true,
+                      url: true,
+                      position: true,
+                    },
                     orderBy: { position: 'asc' },
                     take: 1,
                   },
