@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
-import Image from 'next/image'
 import LoadingButton from '@/components/LoadingButton'
 
 interface HeroSlide {

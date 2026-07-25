@@ -350,7 +350,7 @@ export default function ProductForm() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Error Messages */}
+            
             {error && (
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-r-lg flex justify-between items-start">
                 <div>
@@ -414,9 +414,6 @@ export default function ProductForm() {
                 >
                   ✕
                 </button>
-              </div>
-            )}
-                {success}
               </div>
             )}
 
@@ -725,7 +722,16 @@ export default function ProductForm() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Product Images
               </label>
-
+ {/* Upload Status */}
+            {imageUploading && (
+              <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 px-4 py-3 rounded-r-lg">
+                <p className="font-semibold">📸 Uploading...</p>
+                <p className="text-sm">{uploadingFileName || 'Processing images'}</p>
+                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            )}
               <div className={`border-2 border-dashed rounded-lg p-6 transition-colors ${imageUploading ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}>
                 <div className="text-center">
                   {imageUploading ? (

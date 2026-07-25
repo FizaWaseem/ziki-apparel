@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import Image from 'next/image'
 import Layout from '@/components/Layout'
 import OptimizedImage from '@/components/OptimizedImage'
-import SearchWithAutocomplete from '@/components/SearchWithAutocomplete'
 import { apiFetchWithCache } from '@/lib/apiCache'
 import { DataSourceBadge } from '@/components/OfflineIndicator'
 
@@ -138,7 +136,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProductsData(false)
-  }, [router.query])
+  }, [router.query, fetchProductsData])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -209,13 +207,6 @@ export default function ProductsPage() {
       pathname: router.pathname,
       query
     })
-  }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'PKR'
-    }).format(price)
   }
 
   return (
