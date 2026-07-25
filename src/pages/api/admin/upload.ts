@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       maxFileSize: 10 * 1024 * 1024, // 10MB
     });
 
-    const [fields, files] = await form.parse(req);
+    const [, files] = await form.parse(req);
 
     const file = Array.isArray(files.image) ? files.image[0] : files.image;
 
@@ -64,10 +64,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = [];
       const stream = file.createReadStream?.() || 
-        (file as any).stream ||
-        (file as any);
+        (file as unknown as { stream?: NodeJS.ReadableStream }).stream ||
+        (file as unknown as NodeJS.ReadableStream);
       
-      if (typeof stream.pipe === 'function') {
+      if (typeof stream?.pipe === 'function') {
         stream.on('data', (chunk: Buffer) => chunks.push(chunk));
         stream.on('end', () => resolve(Buffer.concat(chunks)));
         stream.on('error', reject);
