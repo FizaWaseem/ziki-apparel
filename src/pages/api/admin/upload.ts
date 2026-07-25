@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
 import formidable from 'formidable';
+import { promises as fs } from 'fs';
 import path from 'path';
 import { put } from '@vercel/blob';
 
@@ -60,21 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.' });
     }
 
-    // Read file into buffer (works in memory, no disk write)
-    const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      const stream = file.createReadStream?.() || 
-        (file as unknown as { stream?: NodeJS.ReadableStream }).stream ||
-        (file as unknown as NodeJS.ReadableStream);
-      
-      if (typeof stream?.pipe === 'function') {
-        stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-        stream.on('end', () => resolve(Buffer.concat(chunks)));
-        stream.on('error', reject);
-      } else {
-        reject(new Error('Unable to read file stream'));
-      }
-    });
+    // Read temp file created by formidable and keep upload flow fully in memory after parse
+    const fileBuffer = await fs.readFile(file.filepath);
 
     // Generate unique filename
     const timestamp = Date.now();
