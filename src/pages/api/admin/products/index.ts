@@ -54,7 +54,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               url: true,
             },
           },
-          variants: true,
+          variants: {
+            select: {
+              id: true,
+              size: true,
+              color: true,
+              stock: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -63,6 +70,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         products.map((product) => ({
           ...product,
           release: RELEASE_MARKER,
+          variants: product.variants.map((variant) => ({
+            ...variant,
+            price: product.price,
+          })),
           images: product.images.map((image, index) => ({
             ...image,
             position: index,
@@ -158,15 +169,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Create variants if provided
         if (normalizedVariants.length > 0) {
-          await tx.productVariant.createMany({
-            data: normalizedVariants.map(variant => ({
-              productId: newProduct.id,
-              size: variant.size,
-              color: variant.color || null,
-              stock: variant.stock,
-              price: variant.price,
-            })),
-          });
+          const variantValues = normalizedVariants.map((variant) =>
+            Prisma.sql`(${randomUUID()}, ${newProduct.id}, ${variant.size}, ${variant.color || null}, ${variant.stock})`
+          );
+
+          await tx.$executeRaw(
+            Prisma.sql`
+              INSERT INTO "product_variants" ("id", "product_id", "size", "color", "stock")
+              VALUES ${Prisma.join(variantValues)}
+            `
+          );
         }
 
         // Return complete product
@@ -180,7 +192,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 url: true,
               },
             },
-            variants: true,
+            variants: {
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+              },
+            },
           },
         });
       });
@@ -190,6 +209,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ? {
               ...product,
               release: RELEASE_MARKER,
+              variants: product.variants.map((variant) => ({
+                ...variant,
+                price,
+              })),
               images: product.images.map((image, index) => ({
                 ...image,
                 position: index,

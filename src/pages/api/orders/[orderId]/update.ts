@@ -42,7 +42,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   },
                 },
               },
-              variant: true,
+              variant: {
+                select: {
+                  id: true,
+                  size: true,
+                  color: true,
+                  stock: true,
+                },
+              },
             },
           },
         },
@@ -106,7 +113,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           items: {
             include: {
               product: true,
-              variant: true,
+              variant: {
+                select: {
+                  id: true,
+                  size: true,
+                  color: true,
+                  stock: true,
+                },
+              },
             },
           },
           user: true,

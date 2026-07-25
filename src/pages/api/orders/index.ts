@@ -84,7 +84,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     },
                   },
                 },
-                variant: true,
+                variant: {
+                  select: {
+                    id: true,
+                    size: true,
+                    color: true,
+                    stock: true,
+                  },
+                },
               },
             },
             user: {
@@ -118,7 +125,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   },
                 },
               },
-              variant: true,
+              variant: {
+                select: {
+                  id: true,
+                  size: true,
+                  color: true,
+                  stock: true,
+                },
+              },
             },
           },
         },
@@ -186,11 +200,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       for (const item of items) {
         const product = await prisma.product.findUnique({
           where: { id: item.productId },
-          include: {
-            variants: item.variantId ? {
-              where: { id: item.variantId }
-            } : false
-          }
+          select: {
+            id: true,
+            name: true,
+          },
         })
 
         if (!product) {
@@ -201,7 +214,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (item.variantId) {
           const variant = await prisma.productVariant.findUnique({
-            where: { id: item.variantId }
+            where: { id: item.variantId },
+            select: {
+              id: true,
+              productId: true,
+              size: true,
+              stock: true,
+            },
           })
 
           if (!variant) {
@@ -307,7 +326,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   },
                 },
               },
-              variant: true,
+              variant: {
+                select: {
+                  id: true,
+                  size: true,
+                  color: true,
+                  stock: true,
+                },
+              },
             },
           },
         },

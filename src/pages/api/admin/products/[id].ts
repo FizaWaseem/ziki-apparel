@@ -58,7 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               url: true,
             },
           },
-          variants: true,
+          variants: {
+            select: {
+              id: true,
+              size: true,
+              color: true,
+              stock: true,
+            },
+          },
         },
       });
 
@@ -68,6 +75,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.status(200).json({
         ...product,
+        variants: product.variants.map((variant) => ({
+          ...variant,
+          price: product.price,
+        })),
         images: product.images.map((image, index) => ({
           ...image,
           position: index,
@@ -190,15 +201,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // Create new variants
           if (normalizedVariants.length > 0) {
-            await tx.productVariant.createMany({
-              data: normalizedVariants.map(variant => ({
-                productId: id,
-                size: variant.size,
-                color: variant.color || null,
-                stock: variant.stock,
-                price: variant.price,
-              })),
-            });
+            const variantValues = normalizedVariants.map((variant) =>
+              Prisma.sql`(${randomUUID()}, ${id}, ${variant.size}, ${variant.color || null}, ${variant.stock})`
+            );
+
+            await tx.$executeRaw(
+              Prisma.sql`
+                INSERT INTO "product_variants" ("id", "product_id", "size", "color", "stock")
+                VALUES ${Prisma.join(variantValues)}
+              `
+            );
           }
         }
 
@@ -213,7 +225,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 url: true,
               },
             },
-            variants: true,
+            variants: {
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+              },
+            },
           },
         });
       });
@@ -222,6 +241,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         product
           ? {
               ...product,
+              variants: product.variants.map((variant) => ({
+                ...variant,
+                price: product.price,
+              })),
               images: product.images.map((image, index) => ({
                 ...image,
                 position: index,

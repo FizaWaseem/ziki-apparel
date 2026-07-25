@@ -23,6 +23,12 @@ export default async function handler(
             },
           },
           variants: {
+            select: {
+              id: true,
+              size: true,
+              color: true,
+              stock: true,
+            },
             orderBy: { size: 'asc' }
           },
           reviews: {
@@ -53,6 +59,10 @@ export default async function handler(
 
       res.status(200).json({
         ...product,
+        variants: product.variants.map((variant) => ({
+          ...variant,
+          price: null,
+        })),
         avgRating: Math.round(avgRating * 10) / 10
       })
 

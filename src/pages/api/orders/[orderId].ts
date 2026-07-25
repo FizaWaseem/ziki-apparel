@@ -32,7 +32,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   category: true,
                 },
               },
-              variant: true,
+              variant: {
+                select: {
+                  id: true,
+                  size: true,
+                  color: true,
+                  stock: true,
+                },
+              },
             },
           },
         },

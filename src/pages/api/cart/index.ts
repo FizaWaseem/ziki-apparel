@@ -77,7 +77,14 @@ export default async function handler(
               category: true,
             },
           },
-          variant: true,
+          variant: {
+            select: {
+              id: true,
+              size: true,
+              color: true,
+              stock: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       })
@@ -141,7 +148,14 @@ export default async function handler(
           status: 'ACTIVE',
         },
         include: {
-          variants: true,
+          variants: {
+            select: {
+              id: true,
+              size: true,
+              color: true,
+              stock: true,
+            },
+          },
         },
       })
 
@@ -196,7 +210,14 @@ export default async function handler(
                 },
               },
             },
-            variant: true,
+            variant: {
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+              },
+            },
           },
         })
 
@@ -225,7 +246,14 @@ export default async function handler(
                 },
               },
             },
-            variant: true,
+            variant: {
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+              },
+            },
           },
         })
 
@@ -262,7 +290,14 @@ export default async function handler(
         },
         include: {
           product: true,
-          variant: true,
+          variant: {
+            select: {
+              id: true,
+              size: true,
+              color: true,
+              stock: true,
+            },
+          },
         },
       })
 
@@ -299,7 +334,14 @@ export default async function handler(
                 },
               },
             },
-            variant: true,
+            variant: {
+              select: {
+                id: true,
+                size: true,
+                color: true,
+                stock: true,
+              },
+            },
           },
         })
 
