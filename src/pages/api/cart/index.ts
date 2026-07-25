@@ -43,6 +43,25 @@ export default async function handler(
 
   if (req.method === 'GET') {
     try {
+      // Remove stale rows before relational includes to avoid required-relation crashes.
+      await prisma.$executeRaw`
+        DELETE FROM "cart_items"
+        WHERE "user_id" = ${userId}
+          AND (
+            NOT EXISTS (
+              SELECT 1 FROM "products"
+              WHERE "products"."id" = "cart_items"."product_id"
+            )
+            OR (
+              "variant_id" IS NOT NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM "product_variants"
+                WHERE "product_variants"."id" = "cart_items"."variant_id"
+              )
+            )
+          )
+      `
+
       const cartItems = await prisma.cartItem.findMany({
         where: { userId },
         include: {

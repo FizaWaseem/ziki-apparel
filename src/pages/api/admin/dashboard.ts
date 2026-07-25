@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Get dashboard statistics
-    const [totalOrders, totalProducts, totalCustomers, orders, revenue] = await Promise.all([
+    const [totalOrders, totalProducts, totalCustomers, recentOrdersRaw, revenue] = await Promise.all([
       // Total orders count
       prisma.order.count(),
       
@@ -28,17 +28,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { role: 'CUSTOMER' }
       }),
       
-      // Recent orders
+      // Recent orders (fetch base order fields first to avoid required relation crashes)
       prisma.order.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
+        select: {
+          id: true,
+          userId: true,
+          total: true,
+          status: true,
+          createdAt: true,
         },
       }),
       
@@ -55,19 +54,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
     ]);
 
+    const userIds = Array.from(new Set(recentOrdersRaw.map((order) => order.userId).filter(Boolean)));
+    const users = userIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        })
+      : [];
+
+    const usersById = new Map(users.map((user) => [user.id, user]));
+
     const dashboardStats = {
       totalOrders,
       totalRevenue: revenue._sum.total || 0,
       totalProducts,
       totalCustomers,
-      recentOrders: orders.map(order => ({
+      recentOrders: recentOrdersRaw.map(order => {
+        const customer = usersById.get(order.userId);
+        return {
         id: order.id,
-        customerName: order.user.name || 'Unknown',
-        customerEmail: order.user.email,
+        customerName: customer?.name || 'Unknown',
+        customerEmail: customer?.email || 'N/A',
         total: order.total,
         status: order.status,
         createdAt: order.createdAt.toISOString(),
-      })),
+      }}),
     };
 
     return res.status(200).json(dashboardStats);
