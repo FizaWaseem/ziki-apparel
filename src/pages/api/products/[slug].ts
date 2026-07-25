@@ -32,13 +32,18 @@ export default async function handler(
             orderBy: { size: 'asc' }
           },
           reviews: {
-            include: {
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+              verified: true,
+              createdAt: true,
               user: {
                 select: {
                   name: true,
-                  email: true
-                }
-              }
+                  email: true,
+                },
+              },
             },
             orderBy: { createdAt: 'desc' }
           },
