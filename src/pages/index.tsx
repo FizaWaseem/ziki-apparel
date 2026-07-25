@@ -557,16 +557,22 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {categories.map((category) => (
+                {categories.map((category, index) => (
                   <Link key={category.id} href={`/products?category=${category.slug}`}>
-                    <div className="relative h-99 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
-                      <div
-                        className="absolute inset-0 bg-cover bg-center transition-transform group-hover:scale-105"
-                        style={{
-                          backgroundImage: category.image ? `url('${category.image}')` : "transparent"
+                    <div className="relative h-80 bg-gray-900 rounded-lg overflow-hidden group cursor-pointer">
+                      <img
+                        src={category.image || DEFAULT_CATEGORIES[index % DEFAULT_CATEGORIES.length].image || '/placeholder-product.jpg'}
+                        alt={category.name}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          const target = e.currentTarget
+                          const fallback = DEFAULT_CATEGORIES[index % DEFAULT_CATEGORIES.length].image || '/placeholder-product.jpg'
+                          if (target.src !== fallback) {
+                            target.src = fallback
+                          }
                         }}
-                      ></div>
-                      <div className="absolute inset-0  bg-opacity-40 flex items-center justify-center">
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-35 flex items-center justify-center">
                         <div className="text-center text-white">
                           <h3 className="text-2xl font-bold mb-2">{category.name}</h3>
                           {category._count?.products > 0 && (

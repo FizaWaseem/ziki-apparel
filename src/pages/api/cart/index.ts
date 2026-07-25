@@ -6,9 +6,12 @@ import { z } from 'zod'
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit'
 
 interface CartItemWithDetails {
+  id: string
+  productId: string
+  variantId?: string | null
   quantity: number
   variant?: { price: number | null } | null
-  product: { price: number }
+  product?: { price: number } | null
 }
 
 const addToCartSchema = z.object({
@@ -57,9 +60,28 @@ export default async function handler(
         orderBy: { createdAt: 'desc' },
       })
 
+      // Self-heal orphan cart rows (e.g. deleted product/variant with stale references)
+      const invalidItemIds = cartItems
+        .filter((item: CartItemWithDetails) => !item.product || (item.variantId && !item.variant))
+        .map((item: CartItemWithDetails) => item.id)
+
+      if (invalidItemIds.length > 0) {
+        await prisma.cartItem.deleteMany({
+          where: {
+            id: { in: invalidItemIds },
+            userId,
+          },
+        })
+      }
+
+      const validCartItems = cartItems.filter(
+        (item: CartItemWithDetails) => item.product && (!item.variantId || item.variant)
+      )
+
       // Calculate cart totals
-      const subtotal = cartItems.reduce((total: number, item: CartItemWithDetails) => {
-        const price = item.variant?.price || item.product.price
+      const subtotal = validCartItems.reduce((total: number, item: CartItemWithDetails) => {
+        const productPrice = item.product?.price ?? 0
+        const price = item.variant?.price ?? productPrice
         return total + (price * item.quantity)
       }, 0)
 
@@ -68,16 +90,16 @@ export default async function handler(
       const total = subtotal + tax + shipping
 
       res.status(200).json({
-        items: cartItems.map((item: CartItemWithDetails) => ({
+        items: validCartItems.map((item: CartItemWithDetails) => ({
           ...item,
-          price: item.variant?.price || item.product.price,
+          price: item.variant?.price ?? item.product?.price ?? 0,
         })),
         summary: {
           subtotal: Math.round(subtotal * 100) / 100,
           tax: Math.round(tax * 100) / 100,
           shipping: Math.round(shipping * 100) / 100,
           total: Math.round(total * 100) / 100,
-          itemCount: cartItems.reduce((count: number, item: CartItemWithDetails) => count + item.quantity, 0),
+          itemCount: validCartItems.reduce((count: number, item: CartItemWithDetails) => count + item.quantity, 0),
         },
       })
 
@@ -117,13 +139,11 @@ export default async function handler(
       }
 
       // Check if item already exists in cart
-      const existingCartItem = await prisma.cartItem.findUnique({
+      const existingCartItem = await prisma.cartItem.findFirst({
         where: {
-          userId_productId_variantId: {
-            userId,
-            productId,
-            variantId: typeof variantId === 'string' ? variantId : '',
-          },
+          userId,
+          productId,
+          variantId: variantId ?? null,
         },
       })
 
