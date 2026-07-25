@@ -2,7 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
 import formidable from 'formidable';
-import fs from 'fs';
 import path from 'path';
 import { put } from '@vercel/blob';
 
@@ -33,8 +32,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  let tempFilePath: string | null = null;
-
   try {
     // Check Vercel Blob configuration
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
@@ -43,17 +40,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Parse form without writing to disk (Vercel serverless is read-only)
     const form = formidable({
-      uploadDir: './public/uploads',
       keepExtensions: true,
       maxFileSize: 10 * 1024 * 1024, // 10MB
     });
-
-    // Create temp directory if needed
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
 
     const [fields, files] = await form.parse(req);
 
@@ -66,18 +57,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.mimetype || '')) {
-      fs.unlinkSync(file.filepath);
       return res.status(400).json({ message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.' });
     }
 
-    tempFilePath = file.filepath;
-
-    // Read file from temp location
-    const fileBuffer = fs.readFileSync(tempFilePath);
+    // Read file into buffer (works in memory, no disk write)
+    const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      const stream = file.createReadStream?.() || 
+        (file as any).stream ||
+        (file as any);
+      
+      if (typeof stream.pipe === 'function') {
+        stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+        stream.on('end', () => resolve(Buffer.concat(chunks)));
+        stream.on('error', reject);
+      } else {
+        reject(new Error('Unable to read file stream'));
+      }
+    });
 
     // Generate unique filename
     const timestamp = Date.now();
-    const extension = path.extname(file.originalFilename || '');
+    const extension = path.extname(file.originalFilename || '.jpg');
     const randomString = Math.random().toString(36).substring(2, 8);
     const filename = `product-${timestamp}-${randomString}${extension}`;
 
@@ -97,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: 'Image uploaded successfully',
       url,
       filename,
-      size: file.size,
+      size: fileBuffer.length,
       type: file.mimetype,
     });
   } catch (error) {
@@ -108,10 +109,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: errorMessage,
       details: process.env.NODE_ENV === 'development' ? error : undefined,
     });
-  } finally {
-    // Clean up temp file
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-    }
   }
 }
