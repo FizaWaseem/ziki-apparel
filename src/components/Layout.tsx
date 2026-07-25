@@ -47,7 +47,7 @@ export default function Layout({ children }: LayoutProps) {
             </Link>
 
             {/* Navigation */}
-            <nav className="hidden md:flex space-x-8">
+            <nav className="hidden md:flex space-x-8 mr-1">
               <Link href="/" className="text-gray-600 hover:text-gray-900">
                 Home
               </Link>
