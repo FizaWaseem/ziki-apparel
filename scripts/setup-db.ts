@@ -173,12 +173,14 @@ async function main() {
 
       CREATE TABLE IF NOT EXISTS hero_slides (
         id TEXT NOT NULL PRIMARY KEY,
+        type TEXT NOT NULL DEFAULT 'image',
+        src TEXT NOT NULL,
+        poster TEXT,
         title TEXT NOT NULL,
-        description TEXT,
-        image TEXT NOT NULL,
-        "ctaText" TEXT,
-        "ctaLink" TEXT,
-        "displayOrder" INTEGER NOT NULL DEFAULT 0,
+        subtitle TEXT,
+        "ctaText" TEXT NOT NULL DEFAULT 'Shop Now',
+        "ctaLink" TEXT NOT NULL DEFAULT '/products',
+        "position" INTEGER NOT NULL DEFAULT 0,
         active BOOLEAN NOT NULL DEFAULT TRUE,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
